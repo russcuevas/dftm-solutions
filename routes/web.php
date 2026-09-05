@@ -80,6 +80,7 @@ Route::middleware(['admin'])->prefix('admin')->name('admin.')->group(function ()
     Route::delete('/inventory/{id}', [AdminInventoryController::class, 'destroy'])->name('inventory.destroy');
 
     // Repair Traceability Matrix
+    Route::get('/traceability/lookup', [AdminTraceabilityController::class, 'lookup'])->name('traceability.lookup');
     Route::get('/traceability', [AdminTraceabilityController::class, 'index'])->name('traceability.index');
     Route::put('/traceability/{id}', [AdminTraceabilityController::class, 'update'])->name('traceability.update');
     Route::get('/traceability/print', [AdminTraceabilityController::class, 'print'])->name('traceability.print');
@@ -120,6 +121,7 @@ Route::middleware(['encoder'])->prefix('encoder')->name('encoder.')->group(funct
     Route::get('/outgoing/{id}/print', [EncoderOutgoingController::class, 'print'])->name('outgoing.print');
 
     // Traceability Matrix & Diagnostics
+    Route::get('/traceability/lookup', [EncoderTraceabilityController::class, 'lookup'])->name('traceability.lookup');
     Route::get('/traceability', [EncoderTraceabilityController::class, 'index'])->name('traceability.index');
     Route::put('/traceability/{id}', [EncoderTraceabilityController::class, 'update'])->name('traceability.update');
     Route::get('/traceability/print', [EncoderTraceabilityController::class, 'print'])->name('traceability.print');

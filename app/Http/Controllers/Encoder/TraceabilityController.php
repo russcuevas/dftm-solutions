@@ -20,6 +20,15 @@ class TraceabilityController extends Controller
         $activeSlipId = $request->input('outgoing_slip_id');
         $activeBatchId = $request->input('batch_id');
         $tab = $request->input('tab');
+        $openItemId = $request->input('open_item_id');
+        $openItem = null;
+
+        if (!empty($openItemId)) {
+            $openItem = InventoryItem::with(['outgoingSlip', 'batch', 'encoder'])->find($openItemId);
+            if ($openItem && empty($activeSlipId) && !empty($openItem->outgoing_slip_id)) {
+                $activeSlipId = $openItem->outgoing_slip_id;
+            }
+        }
 
         $query = InventoryItem::with(['outgoingSlip', 'batch', 'encoder'])
             ->whereNotNull('outgoing_slip_id')
@@ -30,7 +39,8 @@ class TraceabilityController extends Controller
             || $request->filled('batch_id') 
             || $request->filled('tab') 
             || $request->filled('status') 
-            || $request->filled('brand');
+            || $request->filled('brand')
+            || !empty($openItem);
 
         if (!$hasSelection) {
             $query->whereRaw('1 = 0');
@@ -140,8 +150,69 @@ class TraceabilityController extends Controller
             'firstItem',
             'activeSlipId',
             'activeBatchId',
-            'tab'
+            'tab',
+            'openItem'
         ));
+    }
+
+    public function lookup(Request $request)
+    {
+        $code = trim($request->input('code') ?? $request->input('query') ?? '');
+        if (empty($code)) {
+            return response()->json([
+                'found' => false,
+                'message' => 'Please enter or scan a Serial Number or MAC Address.'
+            ], 400);
+        }
+
+        $cleanCode = preg_replace('/[^A-Za-z0-9]/', '', $code);
+
+        // Search exact match or cleaned alphanumeric match
+        $item = InventoryItem::with(['outgoingSlip', 'batch', 'encoder'])
+            ->where(function($q) use ($code, $cleanCode) {
+                $q->where('serial_number', $code)
+                  ->orWhere('mac_address', $code);
+                if (!empty($cleanCode)) {
+                    $q->orWhereRaw("REPLACE(REPLACE(REPLACE(serial_number, ':', ''), '-', ''), ' ', '') = ?", [$cleanCode])
+                      ->orWhereRaw("REPLACE(REPLACE(REPLACE(mac_address, ':', ''), '-', ''), ' ', '') = ?", [$cleanCode]);
+                }
+            })
+            ->first();
+
+        // Fallback fuzzy search if not found
+        if (!$item) {
+            $item = InventoryItem::with(['outgoingSlip', 'batch', 'encoder'])
+                ->where(function($q) use ($code) {
+                    $q->where('serial_number', 'LIKE', "%{$code}%")
+                      ->orWhere('mac_address', 'LIKE', "%{$code}%");
+                })
+                ->first();
+        }
+
+        if (!$item) {
+            return response()->json([
+                'found' => false,
+                'message' => "No unit found with Serial Number or MAC: \"{$code}\""
+            ], 404);
+        }
+
+        $statusParam = match(strtoupper(str_replace(' ', '_', $item->repair_status ?? 'IN_PROCESS'))) {
+            'REPAIRED' => 'Repaired',
+            'BER' => 'BER',
+            default => 'In process'
+        };
+
+        return response()->json([
+            'found' => true,
+            'item' => $item,
+            'outgoing_slip_id' => $item->outgoing_slip_id,
+            'batch_id' => $item->batch_id,
+            'batch_no' => $item->batch?->batch_no ?? $item->outgoingSlip?->batch_no,
+            'slip_no' => $item->outgoingSlip?->slip_no,
+            'has_outgoing_slip' => !empty($item->outgoing_slip_id),
+            'status_param' => $statusParam,
+            'message' => "Unit found: {$item->serial_number}"
+        ]);
     }
 
     public function update(Request $request, $id)

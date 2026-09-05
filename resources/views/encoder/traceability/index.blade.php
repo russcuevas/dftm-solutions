@@ -67,7 +67,10 @@
             <div class="card-title"><i class="bi bi-cpu-fill"></i> Repair Traceability Matrix</div>
             <div class="card-subtitle">Technical diagnostics, component replacement records, and unit repair tracking</div>
         </div>
-        <div style="display: flex; gap: 10px;">
+        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <button type="button" class="btn btn-outline" onclick="openBarcodeScannerModal()" style="font-weight: 700; color: var(--dftm-navy); border: 1.5px solid var(--dftm-navy); background: #FFFFFF;">
+                <i class="bi bi-upc-scan"></i> Scan Barcode
+            </button>
             <a href="{{ route('encoder.traceability.print', request()->query()) }}" target="_blank" class="btn btn-primary">
                 <i class="bi bi-printer"></i> Print Matrix Report
             </a>
@@ -278,7 +281,7 @@
             </thead>
             <tbody>
                 @forelse($items as $item)
-                <tr style="cursor: pointer;" onclick="openTraceabilityModal({{ json_encode($item) }})" title="Click row to update diagnostics & status">
+                <tr id="row-item-{{ $item->id }}" style="cursor: pointer; transition: background 0.3s;" onclick="openTraceabilityModal({{ json_encode($item) }})" title="Click row to update diagnostics & status">
                     <td style="text-align: center; font-weight: 800; border: 1px solid #000;">{{ $loop->iteration + ($items->currentPage() - 1) * $items->perPage() }}</td>
                     <td style="border: 1px solid #000; font-weight: 700; color: #00205B;">
                         {{ $item->technical_diagnostic ?? '' }}
@@ -424,7 +427,207 @@
     </div>
 </div>
 
+<!-- Barcode Scanner Modal -->
+<div class="modal-backdrop" id="barcodeScannerModal">
+    <div class="modal-card" style="max-width: 520px;">
+        <div class="modal-header">
+            <div class="modal-title"><i class="bi bi-upc-scan"></i> Scan Unit Barcode</div>
+            <button type="button" class="modal-close" data-modal-close><i class="bi bi-x-lg"></i></button>
+        </div>
+        <div class="modal-body">
+            <div style="text-align: center; margin-bottom: 20px;">
+                <div style="width: 60px; height: 60px; background: rgba(0,32,91,0.08); border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 12px; color: var(--dftm-navy);">
+                    <i class="bi bi-upc-scan" style="font-size: 2rem;"></i>
+                </div>
+                <h4 style="margin: 0 0 6px 0; font-weight: 800; color: var(--dftm-navy);">Scan Serial No. or MAC Address</h4>
+                <p style="margin: 0; font-size: 0.85rem; color: var(--dftm-slate);">Use your handheld barcode scanner gun or manually type the serial number or MAC address below.</p>
+            </div>
+
+            <form id="barcodeScanForm" onsubmit="handleBarcodeScan(event)">
+                <div class="form-group">
+                    <label class="form-label" style="font-weight: 800; font-size: 0.8rem; text-transform: uppercase;">
+                        <i class="bi bi-upc"></i> Serial Number / MAC Address
+                    </label>
+                    <div style="position: relative;">
+                        <input type="text" id="barcodeInput" class="form-control" placeholder="Scan or enter Serial / MAC (e.g. 48575443...)" autocomplete="off" style="font-size: 1.1rem; font-family: 'Consolas', monospace; font-weight: 700; padding: 12px 14px; text-transform: uppercase;">
+                    </div>
+                </div>
+
+                <div id="barcodeScanAlert" style="display: none; padding: 12px 14px; border-radius: var(--radius-sm); font-size: 0.85rem; font-weight: 700; margin-bottom: 16px;"></div>
+
+                <div style="display: flex; justify-content: space-between; align-items: center; background: #F8FAFC; padding: 10px 14px; border-radius: var(--radius-sm); border: 1px solid var(--dftm-border); font-size: 0.78rem; color: var(--dftm-slate);">
+                    <span><i class="bi bi-lightning-charge-fill" style="color: #D97706;"></i> Scanner guns auto-submit on scan</span>
+                    <span class="mono" style="font-weight: 700;">Press Enter ↵</span>
+                </div>
+
+                <div style="margin-top: 20px; display: flex; gap: 10px; justify-content: flex-end;">
+                    <button type="button" class="btn btn-outline" data-modal-close>Close</button>
+                    <button type="submit" id="barcodeSubmitBtn" class="btn btn-primary">
+                        <i class="bi bi-search"></i> Find & Open Unit
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <script>
+const LOOKUP_URL = "{{ route('encoder.traceability.lookup') }}";
+const BASE_INDEX_URL = "{{ route('encoder.traceability.index') }}";
+const CURRENT_SLIP_ID = "{{ $activeSlipId ?? '' }}";
+const CURRENT_STATUS = "{{ request('status', '') }}";
+
+let scanDebounceTimer = null;
+let isSearching = false;
+
+function openBarcodeScannerModal() {
+    const modal = document.getElementById('barcodeScannerModal');
+    const input = document.getElementById('barcodeInput');
+    const alertBox = document.getElementById('barcodeScanAlert');
+    if (!modal) return;
+
+    if (alertBox) {
+        alertBox.style.display = 'none';
+        alertBox.textContent = '';
+    }
+
+    if (scanDebounceTimer) clearTimeout(scanDebounceTimer);
+    isSearching = false;
+
+    modal.classList.add('active');
+    setTimeout(() => {
+        if (input) {
+            input.value = '';
+            input.focus();
+        }
+    }, 150);
+}
+
+function handleBarcodeScan(event) {
+    if (event) event.preventDefault();
+    if (scanDebounceTimer) clearTimeout(scanDebounceTimer);
+    if (isSearching) return;
+
+    const input = document.getElementById('barcodeInput');
+    const alertBox = document.getElementById('barcodeScanAlert');
+    const btn = document.getElementById('barcodeSubmitBtn');
+    if (!input) return;
+
+    const code = input.value.trim();
+    if (!code) {
+        showScanAlert('Please enter or scan a Serial Number or MAC Address.', 'warning');
+        input.focus();
+        return;
+    }
+
+    isSearching = true;
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Searching...';
+    }
+
+    fetch(`${LOOKUP_URL}?code=${encodeURIComponent(code)}`, {
+        headers: {
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(async response => {
+        const data = await response.json();
+        if (!response.ok || !data.found) {
+            throw new Error(data.message || 'Unit not found in inventory.');
+        }
+        return data;
+    })
+    .then(data => {
+        const item = data.item;
+        const targetStatus = data.status_param || 'In process';
+        
+        if (!data.has_outgoing_slip) {
+            const batchInfo = data.batch_no ? `Batch ${data.batch_no}` : 'Master Inventory';
+            showScanAlert(`Unit found in ${batchInfo}, but has not been assigned to an Outgoing Repair Slip yet.`, 'info');
+            isSearching = false;
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-search"></i> Find & Open Unit';
+            }
+            return;
+        }
+
+        // Check if currently viewing the exact same outgoing slip / batch AND same status tab
+        const isSameSlip = CURRENT_SLIP_ID && String(CURRENT_SLIP_ID) === String(data.outgoing_slip_id);
+        const isSameStatus = CURRENT_STATUS && CURRENT_STATUS.toLowerCase() === targetStatus.toLowerCase();
+
+        if (isSameSlip && isSameStatus) {
+            // Close scan modal and open unit edit modal directly
+            const scanModal = document.getElementById('barcodeScannerModal');
+            if (scanModal) scanModal.classList.remove('active');
+
+            openTraceabilityModal(item);
+            highlightRow(item.id);
+
+            isSearching = false;
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-search"></i> Find & Open Unit';
+            }
+        } else {
+            // Redirect to that specific batch and status tab, and automatically open the unit modal
+            showScanAlert(`Unit found in ${data.batch_no || data.slip_no || 'Batch'} [${targetStatus.toUpperCase()}]! Opening record...`, 'success');
+            setTimeout(() => {
+                window.location.href = `${BASE_INDEX_URL}?outgoing_slip_id=${data.outgoing_slip_id}&status=${encodeURIComponent(targetStatus)}&open_item_id=${item.id}`;
+            }, 300);
+        }
+    })
+    .catch(error => {
+        isSearching = false;
+        showScanAlert(error.message || 'Unit not found.', 'danger');
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-search"></i> Find & Open Unit';
+        }
+        input.focus();
+        input.select();
+    });
+}
+
+function showScanAlert(message, type = 'danger') {
+    const alertBox = document.getElementById('barcodeScanAlert');
+    if (!alertBox) return;
+
+    alertBox.style.display = 'block';
+    if (type === 'danger') {
+        alertBox.style.background = '#FEE2E2';
+        alertBox.style.color = '#991B1B';
+        alertBox.style.border = '1px solid #FECACA';
+    } else if (type === 'success') {
+        alertBox.style.background = '#D1FAE5';
+        alertBox.style.color = '#065F46';
+        alertBox.style.border = '1px solid #A7F3D0';
+    } else if (type === 'info') {
+        alertBox.style.background = '#EFF6FF';
+        alertBox.style.color = '#1E40AF';
+        alertBox.style.border = '1px solid #BFDBFE';
+    } else {
+        alertBox.style.background = '#FEF3C7';
+        alertBox.style.color = '#92400E';
+        alertBox.style.border = '1px solid #FDE68A';
+    }
+    alertBox.innerHTML = message;
+}
+
+function highlightRow(itemId) {
+    const row = document.getElementById(`row-item-${itemId}`);
+    if (row) {
+        row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        const origBg = row.style.background;
+        row.style.background = '#FEF3C7';
+        setTimeout(() => {
+            row.style.background = origBg;
+        }, 2500);
+    }
+}
+
 function openTraceabilityModal(item) {
     const modal = document.getElementById('traceabilityModal');
     const form = document.getElementById('traceabilityForm');
@@ -444,5 +647,38 @@ function openTraceabilityModal(item) {
 
     modal.classList.add('active');
 }
+
+// Auto-enter on punch / scan listeners
+document.addEventListener('DOMContentLoaded', function() {
+    const barcodeInput = document.getElementById('barcodeInput');
+    if (barcodeInput) {
+        // Auto trigger instantly on paste
+        barcodeInput.addEventListener('paste', function() {
+            setTimeout(() => {
+                if (barcodeInput.value.trim().length >= 3) {
+                    handleBarcodeScan();
+                }
+            }, 60);
+        });
+
+        // Auto trigger when barcode gun punches / finishes typing (250ms debounce)
+        barcodeInput.addEventListener('input', function() {
+            if (scanDebounceTimer) clearTimeout(scanDebounceTimer);
+            const val = barcodeInput.value.trim();
+            if (val.length >= 3) {
+                scanDebounceTimer = setTimeout(() => {
+                    handleBarcodeScan();
+                }, 280);
+            }
+        });
+    }
+
+    @if(!empty($openItem))
+    setTimeout(function() {
+        openTraceabilityModal(@json($openItem));
+        highlightRow({{ $openItem->id }});
+    }, 150);
+    @endif
+});
 </script>
 @endsection
