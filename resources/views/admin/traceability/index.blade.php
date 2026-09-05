@@ -123,7 +123,7 @@
             </span>
 
             <!-- 1. All Status Button -->
-            <a href="{{ route('admin.traceability.index', request()->except('status', 'tab', 'page')) }}" 
+            <a href="{{ route('admin.traceability.index', request()->except('status', 'tab', 'page', 'open_item_id')) }}" 
                class="btn btn-sm" 
                style="{{ $isAllStatus 
                     ? 'background: var(--dftm-navy); color: #FFFFFF; font-weight: 800; border: 1px solid var(--dftm-navy); box-shadow: 0 2px 6px rgba(0,32,91,0.25);' 
@@ -135,7 +135,7 @@
             </a>
 
             <!-- 2. In Process Button -->
-            <a href="{{ route('admin.traceability.index', array_merge(request()->except('status', 'tab', 'page'), ['status' => 'In process'])) }}" 
+            <a href="{{ route('admin.traceability.index', array_merge(request()->except('status', 'tab', 'page', 'open_item_id'), ['status' => 'In process'])) }}" 
                class="btn btn-sm" 
                style="{{ $isInProcess 
                     ? 'background: #D97706; color: #FFFFFF; font-weight: 800; border: 1px solid #D97706; box-shadow: 0 2px 6px rgba(217,119,6,0.3);' 
@@ -147,7 +147,7 @@
             </a>
 
             <!-- 3. Repaired Button -->
-            <a href="{{ route('admin.traceability.index', array_merge(request()->except('status', 'tab', 'page'), ['status' => 'Repaired'])) }}" 
+            <a href="{{ route('admin.traceability.index', array_merge(request()->except('status', 'tab', 'page', 'open_item_id'), ['status' => 'Repaired'])) }}" 
                class="btn btn-sm" 
                style="{{ $isRepaired 
                     ? 'background: #059669; color: #FFFFFF; font-weight: 800; border: 1px solid #059669; box-shadow: 0 2px 6px rgba(5,150,105,0.3);' 
@@ -159,7 +159,7 @@
             </a>
 
             <!-- 4. BER Button -->
-            <a href="{{ route('admin.traceability.index', array_merge(request()->except('status', 'tab', 'page'), ['status' => 'BER'])) }}" 
+            <a href="{{ route('admin.traceability.index', array_merge(request()->except('status', 'tab', 'page', 'open_item_id'), ['status' => 'BER'])) }}" 
                class="btn btn-sm" 
                style="{{ $isBer 
                     ? 'background: #DC2626; color: #FFFFFF; font-weight: 800; border: 1px solid #DC2626; box-shadow: 0 2px 6px rgba(220,38,38,0.3);' 
@@ -174,7 +174,7 @@
         @if(request('status'))
             <div style="font-size: 0.8rem; font-weight: 700; color: var(--dftm-slate);">
                 Filtering by: <span style="font-weight: 800; text-transform: uppercase; color: {{ $isInProcess ? '#D97706' : ($isRepaired ? '#059669' : '#DC2626') }};">{{ request('status') }}</span>
-                <a href="{{ route('admin.traceability.index', request()->except('status', 'page')) }}" style="margin-left: 6px; color: #DC2626; text-decoration: none;" title="Clear status filter"><i class="bi bi-x-circle-fill"></i></a>
+                <a href="{{ route('admin.traceability.index', request()->except('status', 'page', 'open_item_id')) }}" style="margin-left: 6px; color: #DC2626; text-decoration: none;" title="Clear status filter"><i class="bi bi-x-circle-fill"></i></a>
             </div>
         @endif
     </div>
@@ -628,6 +628,22 @@ function highlightRow(itemId) {
     }
 }
 
+function cleanOpenItemIdFromUrl() {
+    if (window.history && window.history.replaceState) {
+        try {
+            const currentUrl = new URL(window.location.href);
+            if (currentUrl.searchParams.has('open_item_id')) {
+                currentUrl.searchParams.delete('open_item_id');
+                const newQuery = currentUrl.searchParams.toString();
+                const cleanPath = currentUrl.pathname + (newQuery ? '?' + newQuery : '');
+                window.history.replaceState({}, document.title, cleanPath);
+            }
+        } catch (e) {
+            console.error('URL cleaning error:', e);
+        }
+    }
+}
+
 function openTraceabilityModal(item) {
     const modal = document.getElementById('traceabilityModal');
     const form = document.getElementById('traceabilityForm');
@@ -646,10 +662,19 @@ function openTraceabilityModal(item) {
     document.getElementById('modalNotes').value = item.notes || '';
 
     modal.classList.add('active');
+    cleanOpenItemIdFromUrl();
 }
 
 // Auto-enter on punch / scan listeners
 document.addEventListener('DOMContentLoaded', function() {
+    // Clean URL query immediately so refreshing or closing never traps the user on this item
+    cleanOpenItemIdFromUrl();
+
+    // Attach cleaner to all modal close triggers
+    document.querySelectorAll('#traceabilityModal [data-modal-close]').forEach(btn => {
+        btn.addEventListener('click', cleanOpenItemIdFromUrl);
+    });
+
     const barcodeInput = document.getElementById('barcodeInput');
     if (barcodeInput) {
         // Auto trigger instantly on paste
@@ -677,6 +702,7 @@ document.addEventListener('DOMContentLoaded', function() {
     setTimeout(function() {
         openTraceabilityModal(@json($openItem));
         highlightRow({{ $openItem->id }});
+        cleanOpenItemIdFromUrl();
     }, 150);
     @endif
 });

@@ -85,6 +85,8 @@ function initSubtableManager() {
     const totalQtyBadge = document.getElementById('totalQtyBadge');
 
     if (!container) return;
+    // Skip on live real-time edit pages which manage their own deletion & sync via API
+    if (document.getElementById('btnLiveAddRow')) return;
 
     function updateRowNumbersAndCount() {
         const rows = container.querySelectorAll('.subtable-row');

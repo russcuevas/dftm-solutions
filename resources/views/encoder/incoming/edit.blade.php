@@ -369,15 +369,22 @@
                     });
             }
 
+            const deletedIds = new Set();
+
             // Attach row events
             function attachRowListeners(row) {
-                const inputs = row.querySelectorAll('input[type="text"]');
+                const snInput = row.querySelector('.row-sn');
+                const macInput = row.querySelector('.row-mac');
+                const boxInput = row.querySelector('.row-box');
                 let rowDebounce = null;
+                let scanBurstTimer = null;
 
-                inputs.forEach((input, inputIdx) => {
+                const inputs = [snInput, macInput, boxInput].filter(Boolean);
+
+                inputs.forEach((input) => {
                     input.addEventListener('input', function() {
                         clearTimeout(rowDebounce);
-                        rowDebounce = setTimeout(() => saveRow(row), 600);
+                        rowDebounce = setTimeout(() => saveRow(row), 500);
                     });
 
                     input.addEventListener('blur', function() {
@@ -385,37 +392,105 @@
                         saveRow(row);
                     });
 
-                    input.addEventListener('keydown', function(e) {
-                        if (e.key === 'Enter') {
+                    // Prevent any form submission or link click on keypress
+                    input.addEventListener('keypress', function(e) {
+                        if (e.key === 'Enter' || e.keyCode === 13 || e.which === 13) {
                             e.preventDefault();
-                            clearTimeout(rowDebounce);
-                            saveRow(row);
-
-                            // Move to next input or create next row
-                            if (inputIdx < inputs.length - 1) {
-                                inputs[inputIdx + 1].focus();
-                            } else {
-                                const nextRow = row.nextElementSibling;
-                                if (nextRow && nextRow.classList.contains('subtable-row')) {
-                                    const nextSn = nextRow.querySelector('.row-sn');
-                                    if (nextSn) nextSn.focus();
-                                } else {
-                                    addNewRow(true);
-                                }
-                            }
+                            e.stopPropagation();
                         }
                     });
                 });
+
+                // Helper to jump to next row's SN or create a new row
+                function moveToNextRowOrAddNew(currentRow) {
+                    const nextRow = currentRow.nextElementSibling;
+                    if (nextRow && nextRow.classList.contains('subtable-row')) {
+                        const nextSn = nextRow.querySelector('.row-sn');
+                        if (nextSn) {
+                            nextSn.focus();
+                            nextSn.select();
+                        }
+                    } else {
+                        addNewRow(true);
+                    }
+                }
+
+                // 1. Serial Number Input handling (Barcode Gun / Keyboard)
+                if (snInput) {
+                    snInput.addEventListener('keydown', function(e) {
+                        if (e.key === 'Enter' || e.keyCode === 13 || e.which === 13) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            e.stopImmediatePropagation();
+                            clearTimeout(rowDebounce);
+                            saveRow(row);
+
+                            // Auto-advance focus to MAC Address in the same row
+                            if (macInput) {
+                                setTimeout(() => {
+                                    macInput.focus();
+                                    macInput.select();
+                                }, 30);
+                            }
+                            return false;
+                        }
+                    });
+                }
+
+                // 2. MAC Address Input handling (Barcode Gun / Keyboard)
+                if (macInput) {
+                    macInput.addEventListener('keydown', function(e) {
+                        if (e.key === 'Enter' || e.keyCode === 13 || e.which === 13) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            e.stopImmediatePropagation();
+                            clearTimeout(rowDebounce);
+                            saveRow(row);
+
+                            // If Box No is empty, move to Box No, otherwise go to next row
+                            if (boxInput && !boxInput.value.trim()) {
+                                setTimeout(() => {
+                                    boxInput.focus();
+                                    boxInput.select();
+                                }, 30);
+                            } else {
+                                moveToNextRowOrAddNew(row);
+                            }
+                            return false;
+                        }
+                    });
+                }
+
+                // 3. Box No Input handling
+                if (boxInput) {
+                    boxInput.addEventListener('keydown', function(e) {
+                        if (e.key === 'Enter' || e.keyCode === 13 || e.which === 13) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            e.stopImmediatePropagation();
+                            clearTimeout(rowDebounce);
+                            saveRow(row);
+
+                            moveToNextRowOrAddNew(row);
+                            return false;
+                        }
+                    });
+                }
 
                 // Delete button
                 const delBtn = row.querySelector('.btn-remove-row');
                 if (delBtn) {
                     delBtn.onclick = function(e) {
                         e.preventDefault();
+                        e.stopPropagation();
+                        row.dataset.deleted = 'true';
+                        clearTimeout(rowDebounce);
+
                         const itemIdInput = row.querySelector('.row-item-id');
                         const itemId = itemIdInput ? itemIdInput.value : '';
 
                         if (itemId) {
+                            deletedIds.add(String(itemId));
                             setSyncStatus('saving');
                             fetch(`${deleteItemUrl}/${itemId}`, {
                                     method: 'DELETE',
@@ -426,8 +501,6 @@
                                 })
                                 .then(res => res.json())
                                 .then(data => {
-                                    row.remove();
-                                    renumberRows();
                                     if (liveUnitsBadge && data.batch) {
                                         liveUnitsBadge.innerHTML =
                                             `<i class="bi bi-cpu"></i> ${data.batch.total_quantity} Units Encoded`;
@@ -435,10 +508,10 @@
                                     setSyncStatus('saved');
                                 })
                                 .catch(err => console.error(err));
-                        } else {
-                            row.remove();
-                            renumberRows();
                         }
+
+                        row.remove();
+                        renumberRows();
                     };
                 }
             }
@@ -452,32 +525,48 @@
                 const rowDiv = document.createElement('div');
                 rowDiv.className = 'subtable-row live-row-new';
                 rowDiv.style.cssText = 'grid-template-columns: 40px 2fr 2fr 1.2fr 30px 40px;';
+
+                // Inherit Box No from previous row if available (for easy bulk boxing)
+                let defaultBoxNo = '';
+                const lastRow = container.querySelector('.subtable-row:last-child');
+                if (lastRow) {
+                    const lastBox = lastRow.querySelector('.row-box');
+                    if (lastBox && lastBox.value.trim()) {
+                        defaultBoxNo = lastBox.value.trim();
+                    }
+                }
+
                 rowDiv.innerHTML = `
-            <input type="hidden" name="item_id[]" class="row-item-id" value="">
-            <div class="subtable-row-num">${currentCount}</div>
-            <div>
-                <input type="text" name="serial_number[]" class="form-control mono row-sn" placeholder="Serial Number (e.g. 48575443F8A...)">
-            </div>
-            <div>
-                <input type="text" name="mac_address[]" class="form-control mono row-mac" placeholder="MAC Address (e.g. 00:1A:2B:...)">
-            </div>
-            <div>
-                <input type="text" name="box_no[]" class="form-control row-box" placeholder="Box No (e.g. BOX 1)">
-            </div>
-            <div class="row-status-indicator" style="display: flex; align-items: center; justify-content: center; font-size: 0.9rem;"></div>
-            <div>
-                <button type="button" class="btn btn-outline btn-icon btn-remove-row" title="Delete Row" style="color: #DC2626; border-color: #FECACA;">
-                    <i class="bi bi-trash"></i>
-                </button>
-            </div>
-        `;
+                    <input type="hidden" name="item_id[]" class="row-item-id" value="">
+                    <div class="subtable-row-num">${currentCount}</div>
+                    <div>
+                        <input type="text" name="serial_number[]" class="form-control mono row-sn" placeholder="Serial Number (e.g. 48575443F8A...)">
+                    </div>
+                    <div>
+                        <input type="text" name="mac_address[]" class="form-control mono row-mac" placeholder="MAC Address (e.g. 00:1A:2B:...)">
+                    </div>
+                    <div>
+                        <input type="text" name="box_no[]" class="form-control row-box" value="${defaultBoxNo}" placeholder="Box No (e.g. BOX 1)">
+                    </div>
+                    <div class="row-status-indicator" style="display: flex; align-items: center; justify-content: center; font-size: 0.9rem;"></div>
+                    <div>
+                        <button type="button" class="btn btn-outline btn-icon btn-remove-row" title="Delete Row" style="color: #DC2626; border-color: #FECACA;">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                `;
 
                 container.appendChild(rowDiv);
                 attachRowListeners(rowDiv);
 
                 if (autoFocus) {
                     const snInput = rowDiv.querySelector('.row-sn');
-                    if (snInput) snInput.focus();
+                    if (snInput) {
+                        setTimeout(() => {
+                            snInput.focus();
+                            snInput.select();
+                        }, 50);
+                    }
                 }
             }
 
@@ -538,7 +627,12 @@
                 const focusedRow = focusedEl ? focusedEl.closest('.subtable-row') : null;
 
                 const serverMap = new Map();
-                serverItems.forEach(item => serverMap.set(String(item.id), item));
+                serverItems.forEach(item => {
+                    const strId = String(item.id);
+                    if (!deletedIds.has(strId)) {
+                        serverMap.set(strId, item);
+                    }
+                });
 
                 // 1. Update or remove existing rows in DOM
                 const domRows = container.querySelectorAll('.subtable-row');
@@ -547,8 +641,8 @@
                     const rowItemId = itemIdInput ? String(itemIdInput.value) : '';
 
                     if (rowItemId) {
-                        if (!serverMap.has(rowItemId)) {
-                            // Deleted on another tab
+                        if (deletedIds.has(rowItemId) || !serverMap.has(rowItemId)) {
+                            // Deleted on another tab or marked deleted locally
                             if (row !== focusedRow) {
                                 row.remove();
                             }
@@ -577,6 +671,8 @@
                     if (emptyPlaceholder) emptyPlaceholder.remove();
 
                     serverMap.forEach(newItem => {
+                        if (deletedIds.has(String(newItem.id))) return;
+
                         const rowDiv = document.createElement('div');
                         rowDiv.className = 'subtable-row live-row-remote';
                         rowDiv.setAttribute('data-item-id', newItem.id);

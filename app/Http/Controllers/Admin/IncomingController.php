@@ -344,9 +344,7 @@ class IncomingController extends Controller
         $item = InventoryItem::where('batch_id', $batch->id)->find($itemId);
 
         if ($item) {
-            if ($item->stock_status === 'IN_STOCK') {
-                $item->delete();
-            }
+            $item->delete();
         }
 
         $batch->recalculateQuantities();

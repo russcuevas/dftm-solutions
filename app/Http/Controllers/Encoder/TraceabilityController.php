@@ -28,6 +28,9 @@ class TraceabilityController extends Controller
             if ($openItem && empty($activeSlipId) && !empty($openItem->outgoing_slip_id)) {
                 $activeSlipId = $openItem->outgoing_slip_id;
             }
+            // Remove open_item_id from request so no Blade helpers or tab links ever inherit it
+            $request->query->remove('open_item_id');
+            $request->request->remove('open_item_id');
         }
 
         $query = InventoryItem::with(['outgoingSlip', 'batch', 'encoder'])
@@ -88,7 +91,7 @@ class TraceabilityController extends Controller
             $query->where('brand', $request->brand);
         }
 
-        $items = $query->paginate(50)->withQueryString();
+        $items = $query->paginate(50)->appends($request->except('open_item_id'));
 
         $brandQuery = InventoryItem::whereNotNull('outgoing_slip_id')
             ->whereNotNull('brand')
@@ -228,6 +231,18 @@ class TraceabilityController extends Controller
         ]);
 
         ActivityLog::log('TRACEABILITY_UPDATED', "Encoder updated repair traceability for item SN: {$item->serial_number}.");
+
+        $returnUrl = url()->previous();
+        if ($returnUrl) {
+            $parsed = parse_url($returnUrl);
+            if (isset($parsed['query'])) {
+                parse_str($parsed['query'], $queryParams);
+                unset($queryParams['open_item_id']);
+                $newQuery = http_build_query($queryParams);
+                $cleanReturnUrl = ($parsed['scheme'] ?? 'http') . '://' . ($parsed['host'] ?? 'localhost') . (isset($parsed['port']) ? ':' . $parsed['port'] : '') . ($parsed['path'] ?? '') . ($newQuery ? '?' . $newQuery : '');
+                return redirect($cleanReturnUrl)->with('success', "Traceability record for SN: {$item->serial_number} updated!");
+            }
+        }
 
         return back()->with('success', "Traceability record for SN: {$item->serial_number} updated!");
     }
