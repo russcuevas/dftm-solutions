@@ -1,0 +1,204 @@
+<?php
+
+namespace App\Http\Controllers\Encoder;
+
+use App\Http\Controllers\Controller;
+use App\Models\Batch;
+use App\Models\InventoryItem;
+use App\Models\ActivityLog;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+
+class IncomingController extends Controller
+{
+    public function index(Request $request)
+    {
+        $query = Batch::with(['items', 'encoder'])->latest();
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('batch_no', 'like', "%{$search}%")
+                  ->orWhere('company_name', 'like', "%{$search}%")
+                  ->orWhere('brand', 'like', "%{$search}%")
+                  ->orWhere('model', 'like', "%{$search}%")
+                  ->orWhere('slip_no', 'like', "%{$search}%");
+            });
+        }
+
+        $batches = $query->paginate(15)->withQueryString();
+        return view('encoder.incoming.index', compact('batches'));
+    }
+
+    public function create()
+    {
+        $nextBatchNumber = 'BATCH ' . (Batch::count() + 1);
+        $slipNo = 'IRS-' . date('Ymd') . '-' . str_pad(Batch::count() + 1, 3, '0', STR_PAD_LEFT);
+        return view('encoder.incoming.create', compact('nextBatchNumber', 'slipNo'));
+    }
+
+    public function store(Request $request)
+    {
+        $batch = DB::transaction(function () use ($request) {
+            $slipNo = $request->input('slip_no') ?: ('IRS-' . date('Ymd') . '-' . str_pad(Batch::count() + 1, 3, '0', STR_PAD_LEFT));
+            $customStatus = $request->filled('status') ? trim($request->input('status')) : null;
+
+            $batch = Batch::create([
+                'slip_no' => $slipNo,
+                'batch_no' => $request->input('batch_no'),
+                'company_name' => $request->input('company_name'),
+                'date_delivered' => $request->input('date_delivered', now()->format('Y-m-d')),
+                'item_description' => $request->input('item_description'),
+                'brand' => $request->input('brand'),
+                'model' => $request->input('model'),
+                'status' => $customStatus,
+                'notes' => $request->input('notes'),
+                'encoded_by' => auth()->id(),
+            ]);
+
+            $serials = $request->input('serial_number', []);
+            $macs = $request->input('mac_address', []);
+            $boxes = $request->input('box_no', []);
+
+            $itemCount = 0;
+
+            if (is_array($serials)) {
+                foreach ($serials as $i => $sn) {
+                    $mac = $macs[$i] ?? null;
+                    $box = $boxes[$i] ?? null;
+
+                    if (!empty($sn) || !empty($mac) || !empty($box)) {
+                        $itemCount++;
+                        InventoryItem::create([
+                            'batch_id' => $batch->id,
+                            'item_no' => $itemCount,
+                            'brand' => $batch->brand,
+                            'model' => $batch->model,
+                            'serial_number' => $sn ? trim($sn) : null,
+                            'mac_address' => $mac ? trim($mac) : null,
+                            'box_no' => $box ? trim($box) : null,
+                            'technical_diagnostic' => null,
+                            'replace_parts' => null,
+                            'repair_status' => $customStatus ?: 'In process',
+                            'stock_status' => 'IN_STOCK',
+                            'company_name' => $batch->company_name,
+                            'date_delivered' => $batch->date_delivered,
+                            'encoded_by' => auth()->id(),
+                        ]);
+                    }
+                }
+            }
+
+            $batch->update([
+                'total_quantity' => $itemCount,
+                'in_stock_quantity' => $itemCount,
+                'outgoing_quantity' => 0,
+            ]);
+
+            ActivityLog::log('INCOMING_ENCODED', "Encoder created Incoming Batch {$batch->batch_no} ({$batch->slip_no}) with {$itemCount} items.");
+
+            return $batch;
+        });
+
+        return redirect()->route('encoder.incoming.show', $batch->id)->with('success', "Incoming Repair Slip {$batch->slip_no} encoded successfully with {$batch->total_quantity} items!");
+    }
+
+    public function show($id)
+    {
+        $batch = Batch::with(['items', 'encoder'])->findOrFail($id);
+        return view('encoder.incoming.show', compact('batch'));
+    }
+
+    public function edit($id)
+    {
+        $batch = Batch::with('items')->findOrFail($id);
+        return view('encoder.incoming.edit', compact('batch'));
+    }
+
+    public function update(Request $request, $id)
+    {
+        $batch = Batch::findOrFail($id);
+
+        DB::transaction(function () use ($request, $batch) {
+            $batch->update([
+                'batch_no' => $request->input('batch_no', $batch->batch_no),
+                'company_name' => $request->input('company_name', $batch->company_name),
+                'date_delivered' => $request->input('date_delivered', $batch->date_delivered),
+                'item_description' => $request->input('item_description', $batch->item_description),
+                'brand' => $request->input('brand', $batch->brand),
+                'model' => $request->input('model', $batch->model),
+                'status' => $request->filled('status') ? trim($request->input('status')) : null,
+                'notes' => $request->input('notes', $batch->notes),
+            ]);
+
+            $itemIds = $request->input('item_id', []);
+            $serials = $request->input('serial_number', []);
+            $macs = $request->input('mac_address', []);
+            $boxes = $request->input('box_no', []);
+
+            $keptIds = [];
+
+            if (is_array($serials)) {
+                $itemNo = 1;
+                foreach ($serials as $i => $sn) {
+                    $id = $itemIds[$i] ?? null;
+                    $mac = $macs[$i] ?? null;
+                    $box = $boxes[$i] ?? null;
+
+                    if (!empty($sn) || !empty($mac) || !empty($box) || $id) {
+                        if ($id) {
+                            $item = InventoryItem::where('batch_id', $batch->id)->find($id);
+                            if ($item) {
+                                $item->update([
+                                    'item_no' => $itemNo++,
+                                    'brand' => $batch->brand,
+                                    'model' => $batch->model,
+                                    'serial_number' => $sn ? trim($sn) : null,
+                                    'mac_address' => $mac ? trim($mac) : null,
+                                    'box_no' => $box ? trim($box) : null,
+                                    'company_name' => $batch->company_name,
+                                ]);
+                                $keptIds[] = $item->id;
+                            }
+                        } else {
+                            $newItem = InventoryItem::create([
+                                'batch_id' => $batch->id,
+                                'item_no' => $itemNo++,
+                                'brand' => $batch->brand,
+                                'model' => $batch->model,
+                                'serial_number' => $sn ? trim($sn) : null,
+                                'mac_address' => $mac ? trim($mac) : null,
+                                'box_no' => $box ? trim($box) : null,
+                                'technical_diagnostic' => null,
+                                'replace_parts' => null,
+                                'repair_status' => $batch->status ?: 'In process',
+                                'stock_status' => 'IN_STOCK',
+                                'company_name' => $batch->company_name,
+                                'date_delivered' => $batch->date_delivered,
+                                'encoded_by' => auth()->id(),
+                            ]);
+                            $keptIds[] = $newItem->id;
+                        }
+                    }
+                }
+            }
+
+            // Remove items that were deleted from form (only if they aren't released)
+            InventoryItem::where('batch_id', $batch->id)
+                ->where('stock_status', 'IN_STOCK')
+                ->whereNotIn('id', $keptIds)
+                ->delete();
+
+            $batch->recalculateQuantities();
+            ActivityLog::log('INCOMING_UPDATED', "Encoder updated Incoming Batch {$batch->batch_no}.");
+        });
+
+        return redirect()->route('encoder.incoming.show', $batch->id)->with('success', "Batch {$batch->batch_no} updated successfully!");
+    }
+
+    public function print($id)
+    {
+        $batch = Batch::with('items')->findOrFail($id);
+        return view('print.incoming_slip', compact('batch'));
+    }
+}
