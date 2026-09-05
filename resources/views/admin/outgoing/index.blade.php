@@ -36,7 +36,7 @@
                     <th>Company Name</th>
                     <th>SI Number</th>
                     <th>DR Number</th>
-                    <th>Date Released</th>
+                    <th>Date Delivered</th>
                     <th>Brand & Model</th>
                     <th>Total Qty</th>
                     <th>Status</th>
@@ -55,7 +55,7 @@
                     </td>
                     <td><span class="mono">{{ $slip->si_number ?? '-' }}</span></td>
                     <td><span class="mono">{{ $slip->dr_number ?? '-' }}</span></td>
-                    <td>{{ $slip->date_released ? $slip->date_released->format('M d, Y') : 'N/A' }}</td>
+                    <td>{{ $slip->date_delivered ? $slip->date_delivered->format('M d, Y') : ($slip->date_released ? $slip->date_released->format('M d, Y') : 'N/A') }}</td>
                     <td>{{ $slip->brand }} {{ $slip->model }}</td>
                     <td><span class="badge badge-released">{{ $slip->total_quantity }} pcs</span></td>
                     <td>

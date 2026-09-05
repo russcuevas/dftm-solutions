@@ -8,6 +8,7 @@ use App\Models\InventoryItem;
 use App\Models\ActivityLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
 
 class IncomingController extends Controller
 {
@@ -19,10 +20,10 @@ class IncomingController extends Controller
             $search = $request->search;
             $query->where(function ($q) use ($search) {
                 $q->where('batch_no', 'like', "%{$search}%")
-                  ->orWhere('company_name', 'like', "%{$search}%")
-                  ->orWhere('brand', 'like', "%{$search}%")
-                  ->orWhere('model', 'like', "%{$search}%")
-                  ->orWhere('slip_no', 'like', "%{$search}%");
+                    ->orWhere('company_name', 'like', "%{$search}%")
+                    ->orWhere('brand', 'like', "%{$search}%")
+                    ->orWhere('model', 'like', "%{$search}%")
+                    ->orWhere('slip_no', 'like', "%{$search}%");
             });
         }
 
@@ -53,7 +54,7 @@ class IncomingController extends Controller
                 'model' => $request->input('model'),
                 'status' => $customStatus,
                 'notes' => $request->input('notes'),
-                'encoded_by' => auth()->id(),
+                'encoded_by' => Auth::id(),
             ]);
 
             $serials = $request->input('serial_number', []);
@@ -83,7 +84,7 @@ class IncomingController extends Controller
                             'stock_status' => 'IN_STOCK',
                             'company_name' => $batch->company_name,
                             'date_delivered' => $batch->date_delivered,
-                            'encoded_by' => auth()->id(),
+                            'encoded_by' => Auth::id(),
                         ]);
                     }
                 }
@@ -121,10 +122,10 @@ class IncomingController extends Controller
 
         DB::transaction(function () use ($request, $batch) {
             $batch->update([
+                'slip_no' => $request->input('slip_no', $batch->slip_no),
                 'batch_no' => $request->input('batch_no', $batch->batch_no),
                 'company_name' => $request->input('company_name', $batch->company_name),
                 'date_delivered' => $request->input('date_delivered', $batch->date_delivered),
-                'item_description' => $request->input('item_description', $batch->item_description),
                 'brand' => $request->input('brand', $batch->brand),
                 'model' => $request->input('model', $batch->model),
                 'status' => $request->filled('status') ? trim($request->input('status')) : null,
@@ -175,7 +176,7 @@ class IncomingController extends Controller
                                 'stock_status' => 'IN_STOCK',
                                 'company_name' => $batch->company_name,
                                 'date_delivered' => $batch->date_delivered,
-                                'encoded_by' => auth()->id(),
+                                'encoded_by' => Auth::id(),
                             ]);
                             $keptIds[] = $newItem->id;
                         }
@@ -200,5 +201,169 @@ class IncomingController extends Controller
     {
         $batch = Batch::with('items')->findOrFail($id);
         return view('print.incoming_slip', compact('batch'));
+    }
+
+    /**
+     * Real-time polling API: Get all items for the batch
+     */
+    public function getItems($id)
+    {
+        /** @var Batch $batch */
+        $batch = Batch::with(['items' => function ($q) {
+            $q->orderBy('item_no', 'asc')->orderBy('id', 'asc');
+        }])->findOrFail($id);
+
+        return response()->json([
+            'success' => true,
+            'batch' => [
+                'id' => $batch->id,
+                'slip_no' => $batch->slip_no,
+                'batch_no' => $batch->batch_no,
+                'company_name' => $batch->company_name,
+                'brand' => $batch->brand,
+                'model' => $batch->model,
+                'status' => $batch->status,
+                'total_quantity' => $batch->total_quantity,
+                'in_stock_quantity' => $batch->in_stock_quantity,
+                'outgoing_quantity' => $batch->outgoing_quantity,
+            ],
+            'items' => $batch->items->map(function ($item) {
+                return [
+                    'id' => $item->id,
+                    'item_no' => $item->item_no,
+                    'serial_number' => $item->serial_number ?? '',
+                    'mac_address' => $item->mac_address ?? '',
+                    'box_no' => $item->box_no ?? '',
+                    'stock_status' => $item->stock_status,
+                    'repair_status' => $item->repair_status,
+                    'updated_at' => $item->updated_at ? $item->updated_at->toIso8601String() : null,
+                ];
+            }),
+        ]);
+    }
+
+    /**
+     * Auto-save single row item (Create or Update)
+     */
+    public function saveItem(Request $request, $id)
+    {
+        $batch = Batch::findOrFail($id);
+
+        $itemId = $request->input('item_id');
+        $sn = $request->filled('serial_number') ? trim($request->input('serial_number')) : null;
+        $mac = $request->filled('mac_address') ? trim($request->input('mac_address')) : null;
+        $box = $request->filled('box_no') ? trim($request->input('box_no')) : null;
+
+        $item = null;
+
+        if ($itemId) {
+            $item = InventoryItem::where('batch_id', $batch->id)->find($itemId);
+            if ($item) {
+                $item->update([
+                    'serial_number' => $sn,
+                    'mac_address' => $mac,
+                    'box_no' => $box,
+                    'brand' => $batch->brand,
+                    'model' => $batch->model,
+                    'company_name' => $batch->company_name,
+                ]);
+            }
+        } else {
+            if (!empty($sn) || !empty($mac) || !empty($box)) {
+                $nextNo = ($batch->items()->max('item_no') ?? 0) + 1;
+                $item = InventoryItem::create([
+                    'batch_id' => $batch->id,
+                    'item_no' => $nextNo,
+                    'brand' => $batch->brand,
+                    'model' => $batch->model,
+                    'serial_number' => $sn,
+                    'mac_address' => $mac,
+                    'box_no' => $box,
+                    'repair_status' => $batch->status ?: 'In process',
+                    'stock_status' => 'IN_STOCK',
+                    'company_name' => $batch->company_name,
+                    'date_delivered' => $batch->date_delivered,
+                    'encoded_by' => Auth::id(),
+                ]);
+            }
+        }
+
+        $batch->recalculateQuantities();
+
+        return response()->json([
+            'success' => true,
+            'item' => $item ? [
+                'id' => $item->id,
+                'item_no' => $item->item_no,
+                'serial_number' => $item->serial_number ?? '',
+                'mac_address' => $item->mac_address ?? '',
+                'box_no' => $item->box_no ?? '',
+                'stock_status' => $item->stock_status,
+                'repair_status' => $item->repair_status,
+                'updated_at' => $item->updated_at ? $item->updated_at->toIso8601String() : null,
+            ] : null,
+            'batch' => [
+                'total_quantity' => $batch->total_quantity,
+                'in_stock_quantity' => $batch->in_stock_quantity,
+                'outgoing_quantity' => $batch->outgoing_quantity,
+            ],
+        ]);
+    }
+
+    /**
+     * Delete single row item in real-time
+     */
+    public function deleteItem($id, $itemId)
+    {
+        $batch = Batch::findOrFail($id);
+        $item = InventoryItem::where('batch_id', $batch->id)->find($itemId);
+
+        if ($item) {
+            if ($item->stock_status === 'IN_STOCK') {
+                $item->delete();
+            }
+        }
+
+        $batch->recalculateQuantities();
+
+        return response()->json([
+            'success' => true,
+            'batch' => [
+                'total_quantity' => $batch->total_quantity,
+                'in_stock_quantity' => $batch->in_stock_quantity,
+                'outgoing_quantity' => $batch->outgoing_quantity,
+            ],
+        ]);
+    }
+
+    /**
+     * Auto-save batch header details
+     */
+    public function saveHeader(Request $request, $id)
+    {
+        $batch = Batch::findOrFail($id);
+
+        $batch->update([
+            'slip_no' => $request->input('slip_no', $batch->slip_no),
+            'batch_no' => $request->input('batch_no', $batch->batch_no),
+            'company_name' => $request->input('company_name', $batch->company_name),
+            'date_delivered' => $request->input('date_delivered', $batch->date_delivered),
+            'brand' => $request->input('brand', $batch->brand),
+            'model' => $request->input('model', $batch->model),
+            'status' => $request->filled('status') ? trim($request->input('status')) : null,
+            'notes' => $request->input('notes', $batch->notes),
+        ]);
+
+        InventoryItem::where('batch_id', $batch->id)->update([
+            'brand' => $batch->brand,
+            'model' => $batch->model,
+            'company_name' => $batch->company_name,
+            'date_delivered' => $batch->date_delivered,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'batch' => $batch,
+        ]);
     }
 }

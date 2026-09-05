@@ -9,6 +9,7 @@ use App\Models\Batch;
 use App\Models\ActivityLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
 
 class OutgoingController extends Controller
 {
@@ -20,10 +21,10 @@ class OutgoingController extends Controller
             $search = $request->search;
             $query->where(function ($q) use ($search) {
                 $q->where('slip_no', 'like', "%{$search}%")
-                  ->orWhere('customer_name', 'like', "%{$search}%")
-                  ->orWhere('company_name', 'like', "%{$search}%")
-                  ->orWhere('si_number', 'like', "%{$search}%")
-                  ->orWhere('dr_number', 'like', "%{$search}%");
+                    ->orWhere('customer_name', 'like', "%{$search}%")
+                    ->orWhere('company_name', 'like', "%{$search}%")
+                    ->orWhere('si_number', 'like', "%{$search}%")
+                    ->orWhere('dr_number', 'like', "%{$search}%");
             });
         }
 
@@ -63,25 +64,25 @@ class OutgoingController extends Controller
             $model = $request->input('model') ?: ($firstItem?->model ?? null);
             $companyName = $request->input('company_name') ?: ($firstItem?->company_name ?? null);
             $batchNo = $request->input('batch_no') ?: ($firstItem?->batch?->batch_no ?? null);
+            $dateDelivered = $request->input('date_delivered', now()->format('Y-m-d'));
 
             $slip = OutgoingSlip::create([
                 'slip_no' => $slipNo,
                 'company_name' => $companyName,
                 'customer_name' => $request->input('customer_name'),
                 'contact_number' => $request->input('contact_number'),
-                'date_delivered' => $request->input('date_delivered', $firstItem?->date_delivered?->format('Y-m-d')),
-                'date_released' => $request->input('date_released', now()->format('Y-m-d')),
+                'date_delivered' => $dateDelivered,
+                'date_released' => $dateDelivered,
                 'si_number' => $request->input('si_number'),
                 'dr_number' => $request->input('dr_number'),
                 'batch_no' => $batchNo,
-                'item_description' => $request->input('item_description', $firstItem?->batch?->item_description ?? 'RELEASED UNITS'),
                 'brand' => $brand,
                 'model' => $model,
                 'box_no' => $request->input('box_no'),
                 'total_quantity' => count($selectedItemIds),
                 'status' => $request->input('status') ?: null,
                 'notes' => $request->input('notes'),
-                'encoded_by' => auth()->id(),
+                'encoded_by' => Auth::id(),
             ]);
 
             $affectedBatchIds = [];
@@ -93,7 +94,7 @@ class OutgoingController extends Controller
                     'customer_contact' => $slip->contact_number,
                     'si_number' => $slip->si_number,
                     'dr_number' => $slip->dr_number,
-                    'date_outgoing' => $slip->date_released,
+                    'date_outgoing' => $slip->date_delivered,
                     'box_no' => $request->input('box_no') ?: $item->box_no,
                 ]);
 
@@ -141,14 +142,16 @@ class OutgoingController extends Controller
         $slip = OutgoingSlip::with('items')->findOrFail($id);
 
         DB::transaction(function () use ($request, $slip) {
+            $dateDelivered = $request->input('date_delivered', $slip->date_delivered);
+
             $slip->update([
+                'slip_no' => $request->input('slip_no', $slip->slip_no),
                 'company_name' => $request->input('company_name'),
                 'si_number' => $request->input('si_number'),
                 'dr_number' => $request->input('dr_number'),
-                'date_delivered' => $request->input('date_delivered'),
-                'date_released' => $request->input('date_released'),
+                'date_delivered' => $dateDelivered,
+                'date_released' => $dateDelivered,
                 'batch_no' => $request->input('batch_no', $slip->batch_no),
-                'item_description' => $request->input('item_description', $slip->item_description),
                 'brand' => $request->input('brand', $slip->brand),
                 'model' => $request->input('model', $slip->model),
                 'box_no' => $request->input('box_no'),
@@ -185,7 +188,7 @@ class OutgoingController extends Controller
                                     'company_name' => $slip->company_name,
                                     'si_number' => $slip->si_number,
                                     'dr_number' => $slip->dr_number,
-                                    'date_outgoing' => $slip->date_released,
+                                    'date_outgoing' => $slip->date_delivered,
                                 ]);
                                 $activeSlipItemIds[] = $item->id;
                                 if ($item->batch_id) $affectedBatchIds[$item->batch_id] = true;
@@ -204,8 +207,8 @@ class OutgoingController extends Controller
                                 'repair_status' => 'In process',
                                 'si_number' => $slip->si_number,
                                 'dr_number' => $slip->dr_number,
-                                'date_outgoing' => $slip->date_released,
-                                'encoded_by' => auth()->id(),
+                                'date_outgoing' => $slip->date_delivered,
+                                'encoded_by' => Auth::id(),
                             ]);
                             $activeSlipItemIds[] = $newItem->id;
                         }
@@ -238,7 +241,7 @@ class OutgoingController extends Controller
                         'stock_status' => 'RELEASED',
                         'si_number' => $slip->si_number,
                         'dr_number' => $slip->dr_number,
-                        'date_outgoing' => $slip->date_released,
+                        'date_outgoing' => $slip->date_delivered,
                         'company_name' => $slip->company_name ?: $unit->company_name,
                     ]);
                     $activeSlipItemIds[] = $unit->id;

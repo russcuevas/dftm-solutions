@@ -53,7 +53,7 @@
                     <th>Slip #</th>
                     <th>Batch No</th>
                     <th>Company Name</th>
-                    <th>Date Delivered</th>
+                    <th>Date Received</th>
                     <th>Brand & Model</th>
                     <th>Total Qty</th>
                     <th>In Stock</th>
@@ -71,9 +71,6 @@
                     <td>{{ $batch->date_delivered ? $batch->date_delivered->format('M d, Y') : 'N/A' }}</td>
                     <td>
                         <strong>{{ $batch->brand }}</strong> {{ $batch->model }}
-                        @if($batch->item_description)
-                            <div style="font-size: 0.72rem; color: var(--dftm-slate);">{{ Str::limit($batch->item_description, 35) }}</div>
-                        @endif
                     </td>
                     <td><span class="badge" style="background: #F1F5F9; color: var(--dftm-navy);">{{ $batch->total_quantity }} pcs</span></td>
                     <td><span class="badge badge-stock">{{ $batch->in_stock_quantity }} pcs</span></td>

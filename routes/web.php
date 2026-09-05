@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\IncomingController as AdminIncomingController;
@@ -23,8 +24,10 @@ use App\Http\Controllers\Encoder\InventoryController as EncoderInventoryControll
 
 // Root redirect
 Route::get('/', function () {
-    if (auth()->check()) {
-        return auth()->user()->isAdmin()
+    if (Auth::check()) {
+        /** @var \App\Models\User $user */
+        $user = Auth::user();
+        return $user->isAdmin()
             ? redirect()->route('admin.dashboard')
             : redirect()->route('encoder.dashboard');
     }
@@ -56,6 +59,10 @@ Route::middleware(['admin'])->prefix('admin')->name('admin.')->group(function ()
     Route::put('/incoming/{id}', [AdminIncomingController::class, 'update'])->name('incoming.update');
     Route::delete('/incoming/{id}', [AdminIncomingController::class, 'destroy'])->name('incoming.destroy');
     Route::get('/incoming/{id}/print', [AdminIncomingController::class, 'print'])->name('incoming.print');
+    Route::get('/incoming/{id}/items', [AdminIncomingController::class, 'getItems'])->name('incoming.items');
+    Route::post('/incoming/{id}/save-item', [AdminIncomingController::class, 'saveItem'])->name('incoming.saveItem');
+    Route::delete('/incoming/{id}/item/{itemId}', [AdminIncomingController::class, 'deleteItem'])->name('incoming.deleteItem');
+    Route::post('/incoming/{id}/save-header', [AdminIncomingController::class, 'saveHeader'])->name('incoming.saveHeader');
 
     // Outgoing Repair Slips
     Route::get('/outgoing', [AdminOutgoingController::class, 'index'])->name('outgoing.index');
@@ -98,6 +105,10 @@ Route::middleware(['encoder'])->prefix('encoder')->name('encoder.')->group(funct
     Route::get('/incoming/{id}/edit', [EncoderIncomingController::class, 'edit'])->name('incoming.edit');
     Route::put('/incoming/{id}', [EncoderIncomingController::class, 'update'])->name('incoming.update');
     Route::get('/incoming/{id}/print', [EncoderIncomingController::class, 'print'])->name('incoming.print');
+    Route::get('/incoming/{id}/items', [EncoderIncomingController::class, 'getItems'])->name('incoming.items');
+    Route::post('/incoming/{id}/save-item', [EncoderIncomingController::class, 'saveItem'])->name('incoming.saveItem');
+    Route::delete('/incoming/{id}/item/{itemId}', [EncoderIncomingController::class, 'deleteItem'])->name('incoming.deleteItem');
+    Route::post('/incoming/{id}/save-header', [EncoderIncomingController::class, 'saveHeader'])->name('incoming.saveHeader');
 
     // Outgoing Slips
     Route::get('/outgoing', [EncoderOutgoingController::class, 'index'])->name('outgoing.index');

@@ -35,7 +35,7 @@
                     <th>Slip #</th>
                     <th>Batch No</th>
                     <th>Company Name</th>
-                    <th>Date Delivered</th>
+                    <th>Date Received</th>
                     <th>Brand & Model</th>
                     <th>Total Qty</th>
                     <th>In Stock</th>

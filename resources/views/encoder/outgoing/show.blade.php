@@ -35,8 +35,8 @@
                     </div>
                 </div>
                 <div>
-                    <span style="font-size: 0.72rem; font-weight: 700; text-transform: uppercase; color: var(--dftm-slate);">DATE RELEASED:</span>
-                    <div style="font-weight: 600;">{{ $slip->date_released ? $slip->date_released->format('F d, Y') : 'N/A' }}</div>
+                    <span style="font-size: 0.72rem; font-weight: 700; text-transform: uppercase; color: var(--dftm-slate);">DATE DELIVERED:</span>
+                    <div style="font-weight: 600;">{{ $slip->date_delivered ? $slip->date_delivered->format('F d, Y') : ($slip->date_released ? $slip->date_released->format('F d, Y') : 'N/A') }}</div>
                 </div>
                 <div>
                     <span style="font-size: 0.72rem; font-weight: 700; text-transform: uppercase; color: var(--dftm-slate);">TOTAL QUANTITY:</span>

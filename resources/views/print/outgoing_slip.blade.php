@@ -114,9 +114,6 @@
         <tr>
             <td colspan="4" style="text-align: center; font-weight: bold; background: #F8FAFC; letter-spacing: 0.5px;">{{ $slip->batch_no ?? 'BATCH 1' }}</td>
         </tr>
-        <tr>
-            <td colspan="4" style="text-align: center; font-weight: bold; background: #FFFFFF; letter-spacing: 0.5px;">ITEM DESCRIPTION: {{ $slip->item_description ?? '' }}</td>
-        </tr>
     </table>
 
     <!-- Subtable for Outgoing Serialized Items (Matches Excel Columns Exactly) -->

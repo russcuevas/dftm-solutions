@@ -25,8 +25,8 @@
             <!-- Header Row 1: Slip No, Company Name, SI Number, DR Number -->
             <div class="form-row">
                 <div class="form-group">
-                    <label class="form-label">Slip Number (Auto-Generated)</label>
-                    <input type="text" name="slip_no" class="form-control mono" value="{{ old('slip_no', $slipNo) }}" readonly style="background: #F8FAFC; color: var(--dftm-navy); font-weight: 700;">
+                    <label class="form-label">Slip Number</label>
+                    <input type="text" name="slip_no" class="form-control mono" value="{{ old('slip_no') }}" placeholder="Enter Slip Number (e.g. ORS-20260905-001)" required>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Company Name</label>
@@ -49,15 +49,11 @@
                 </div>
             </div>
 
-            <!-- Header Row 2: Date Delivered, Date Released, Status, Box No -->
+            <!-- Header Row 2: Date Delivered, Status, Box No -->
             <div class="form-row">
                 <div class="form-group">
                     <label class="form-label">Date Delivered</label>
-                    <input type="date" name="date_delivered" class="form-control" value="{{ old('date_delivered') }}">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Date Released (Outgoing)</label>
-                    <input type="date" name="date_released" class="form-control" value="{{ old('date_released', date('Y-m-d')) }}">
+                    <input type="date" name="date_delivered" class="form-control" value="{{ old('date_delivered', date('Y-m-d')) }}">
                 </div>
                 <div class="form-group">
                     <label class="form-label">Status (Optional)</label>

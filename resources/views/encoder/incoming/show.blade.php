@@ -33,7 +33,7 @@
                     <div style="font-weight: 700; color: var(--dftm-navy); font-size: 1rem;">{{ $batch->company_name ?? 'N/A' }}</div>
                 </div>
                 <div>
-                    <span style="font-size: 0.72rem; font-weight: 700; text-transform: uppercase; color: var(--dftm-slate);">DATE DELIVERED:</span>
+                    <span style="font-size: 0.72rem; font-weight: 700; text-transform: uppercase; color: var(--dftm-slate);">DATE RECEIVED:</span>
                     <div style="font-weight: 600;">{{ $batch->date_delivered ? $batch->date_delivered->format('F d, Y') : 'N/A' }}</div>
                 </div>
                 <div>
@@ -60,10 +60,6 @@
                 <div>
                     <span style="font-size: 0.72rem; font-weight: 700; text-transform: uppercase; color: var(--dftm-slate);">BATCH:</span>
                     <div style="font-weight: 700; color: var(--dftm-navy);">{{ $batch->batch_no }}</div>
-                </div>
-                <div>
-                    <span style="font-size: 0.72rem; font-weight: 700; text-transform: uppercase; color: var(--dftm-slate);">ITEM DESCRIPTION:</span>
-                    <div style="font-weight: 600;">{{ $batch->item_description ?? 'N/A' }}</div>
                 </div>
                 <div>
                     <span style="font-size: 0.72rem; font-weight: 700; text-transform: uppercase; color: var(--dftm-slate);">BRAND & MODEL:</span>

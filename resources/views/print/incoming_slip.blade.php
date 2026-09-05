@@ -212,9 +212,9 @@
             <td class="header-val">{{ $batch->status ?: '-' }}</td>
         </tr>
 
-        <!-- Header Info Row 2: Date Delivered & Total Quantity -->
+        <!-- Header Info Row 2: Date Received & Total Quantity -->
         <tr>
-            <td class="header-label">DATE DELIVERED:</td>
+            <td class="header-label">DATE RECEIVED:</td>
             <td class="header-val">{{ $batch->date_delivered ? $batch->date_delivered->format('Y-m-d') : '' }}</td>
             <td class="header-label">TOTAL QUANTITY:</td>
             <td class="header-val">{{ $batch->total_quantity ?? $batch->items->count() }}</td>
@@ -223,11 +223,6 @@
         <!-- Batch Banner Row -->
         <tr>
             <td colspan="4" class="batch-banner">{{ $batch->batch_no ?? 'BATCH 1' }}</td>
-        </tr>
-
-        <!-- Item Description Banner Row -->
-        <tr>
-            <td colspan="4" class="desc-banner">{{ $batch->item_description ?? 'ITEM DESCRIPTION' }}</td>
         </tr>
     </table>
 
