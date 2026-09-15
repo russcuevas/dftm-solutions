@@ -14,9 +14,22 @@
         }
         .live-row-remote { animation: rowPulse 1.2s ease-out; }
 
+        @keyframes shakeRow {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-4px); }
+            40%, 80% { transform: translateX(4px); }
+        }
         .row-duplicate {
             background-color: #FEF2F2 !important;
             border-left: 4px solid #EF4444 !important;
+            animation: shakeRow 0.35s ease-in-out;
+            box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2);
+        }
+        .row-duplicate .row-sn {
+            border-color: #EF4444 !important;
+            background-color: #FFF5F5 !important;
+            color: #DC2626 !important;
+            font-weight: 700;
         }
 
         .btn-inspect-dup {
@@ -348,6 +361,27 @@
             let isPolling = false;
             const deletedIds = new Set();
 
+            function playDuplicateAlertSound() {
+                try {
+                    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                    if (!AudioCtx) return;
+                    const audioCtx = new AudioCtx();
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(520, audioCtx.currentTime);
+                    osc.frequency.setValueAtTime(300, audioCtx.currentTime + 0.12);
+                    gain.gain.setValueAtTime(0.25, audioCtx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.35);
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 0.35);
+                } catch (e) {
+                    // Ignore browser audio policy restrictions
+                }
+            }
+
             function setSyncStatus(status) {
                 if (!syncStatusBadge) return;
                 if (status === 'saving') {
@@ -355,6 +389,11 @@
                     syncStatusBadge.style.color = '#D97706';
                     syncStatusBadge.style.borderColor = '#FDE68A';
                     syncStatusBadge.innerHTML = '<i class="bi bi-cloud-arrow-up-fill spin-icon"></i> Saving...';
+                } else if (status === 'duplicate_blocked') {
+                    syncStatusBadge.style.background = '#FEE2E2';
+                    syncStatusBadge.style.color = '#DC2626';
+                    syncStatusBadge.style.borderColor = '#FCA5A5';
+                    syncStatusBadge.innerHTML = '<i class="bi bi-x-octagon-fill"></i> Duplicate Blocked (Not Saved)';
                 } else if (status === 'saved') {
                     syncStatusBadge.style.background = '#ECFDF5';
                     syncStatusBadge.style.color = '#059669';
@@ -395,7 +434,7 @@
                 });
             });
 
-            function saveRow(row) {
+            async function saveRow(row) {
                 const itemIdInput = row.querySelector('.row-item-id');
                 const snInput = row.querySelector('.row-sn');
                 const macInput = row.querySelector('.row-mac');
@@ -411,69 +450,87 @@
                 const brand = brandInput ? brandInput.value.trim() : '';
                 const box = boxInput ? boxInput.value.trim() : '';
 
-                if (!itemId && !sn && !mac && !box) return;
+                if (!itemId && !sn && !mac && !box) return { success: false, skipped: true };
 
                 if (statusIndicator) {
                     statusIndicator.innerHTML = '<i class="bi bi-arrow-repeat spin-icon" style="color: var(--dftm-accent);"></i>';
                 }
                 setSyncStatus('saving');
 
-                fetch(saveItemUrl, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': csrfToken,
-                        'Accept': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        _token: csrfToken,
-                        item_id: itemId || null,
-                        serial_number: sn,
-                        mac_address: mac,
-                        model: model,
-                        brand: brand,
-                        box_no: box
-                    })
-                })
-                .then(res => res.json())
-                .then(data => {
+                try {
+                    const res = await fetch(saveItemUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': csrfToken,
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            _token: csrfToken,
+                            item_id: itemId || null,
+                            serial_number: sn,
+                            mac_address: mac,
+                            model: model,
+                            brand: brand,
+                            box_no: box
+                        })
+                    });
+
+                    const data = await res.json();
+
+                    if (data.is_duplicate) {
+                        row.classList.add('row-duplicate');
+                        lastDetectedDuplicateSN = sn;
+                        duplicateAlertText.textContent = `DUPLICATE BLOCKED: Serial "${sn}" already exists in the system!`;
+                        duplicateAlertSubtext.textContent = data.duplicate_info
+                            ? `Previously registered in ${data.duplicate_info.transmittal_no} | Status: ${data.duplicate_info.repair_status || 'In process'}`
+                            : 'This unit has already been recorded and was NOT saved.';
+                        duplicateAlertBanner.style.display = 'block';
+
+                        if (statusIndicator) {
+                            statusIndicator.innerHTML = `
+                                <button type="button" class="btn-inspect-dup" onclick="openInspectorFor('${sn}')" title="Inspect duplicate details">
+                                    <i class="bi bi-exclamation-triangle-fill"></i> Dup
+                                </button>
+                            `;
+                        }
+
+                        playDuplicateAlertSound();
+                        setSyncStatus('duplicate_blocked');
+                        return { success: false, is_duplicate: true, duplicate_info: data.duplicate_info };
+                    }
+
                     if (data.success && data.item) {
                         if (itemIdInput) itemIdInput.value = data.item.id;
                         row.setAttribute('data-item-id', data.item.id);
+                        row.classList.remove('row-duplicate');
 
-                        if (data.is_duplicate && data.duplicate_info) {
-                            row.classList.add('row-duplicate');
-                            lastDetectedDuplicateSN = sn;
-                            duplicateAlertText.textContent = `DUPLICATE DETECTED: Serial "${sn}" already exists in the system!`;
-                            duplicateAlertSubtext.textContent = `Previously registered in ${data.duplicate_info.transmittal_no} | Status: ${data.duplicate_info.repair_status || 'In process'}`;
-                            duplicateAlertBanner.style.display = 'block';
+                        if (duplicateAlertBanner && lastDetectedDuplicateSN === sn) {
+                            duplicateAlertBanner.style.display = 'none';
+                        }
 
-                            if (statusIndicator) {
-                                statusIndicator.innerHTML = `
-                                    <button type="button" class="btn-inspect-dup" onclick="openInspectorFor('${sn}')" title="Inspect duplicate details">
-                                        <i class="bi bi-exclamation-triangle-fill"></i> Dup
-                                    </button>
-                                `;
-                            }
-                        } else {
-                            row.classList.remove('row-duplicate');
-                            if (statusIndicator) {
-                                statusIndicator.innerHTML = '<i class="bi bi-check-lg" style="color: #10B981; font-weight: 800;"></i>';
-                            }
+                        if (statusIndicator) {
+                            statusIndicator.innerHTML = '<i class="bi bi-check-lg" style="color: #10B981; font-weight: 800;"></i>';
                         }
 
                         if (totalUnitsCount && data.transmittal) {
                             totalUnitsCount.textContent = data.transmittal.total_quantity;
                         }
                         setSyncStatus('saved');
+                        return { success: true, item: data.item };
+                    } else {
+                        if (statusIndicator) {
+                            statusIndicator.innerHTML = '<i class="bi bi-exclamation-triangle" style="color: #EF4444;" title="Save failed"></i>';
+                        }
+                        return { success: false };
                     }
-                })
-                .catch(err => {
+                } catch (err) {
                     console.error('Save error:', err);
                     if (statusIndicator) {
                         statusIndicator.innerHTML = '<i class="bi bi-exclamation-triangle" style="color: #EF4444;" title="Save failed"></i>';
                     }
-                });
+                    return { success: false, error: err };
+                }
             }
 
             function moveToNextRowOrAddNew(currentRow) {
@@ -502,7 +559,7 @@
                 allInputs.forEach(input => {
                     input.addEventListener('input', function() {
                         clearTimeout(debounceTimer);
-                        debounceTimer = setTimeout(() => saveRow(row), 450);
+                        debounceTimer = setTimeout(() => saveRow(row), 500);
                     });
 
                     input.addEventListener('blur', function() {
@@ -519,36 +576,61 @@
                 });
 
                 if (snInput) {
-                    snInput.addEventListener('keydown', function(e) {
+                    snInput.addEventListener('keydown', async function(e) {
                         if (e.key === 'Enter' || e.keyCode === 13) {
                             e.preventDefault();
                             e.stopPropagation();
                             clearTimeout(debounceTimer);
-                            saveRow(row);
 
-                            if (macInput) {
-                                setTimeout(() => {
+                            const val = snInput.value.trim();
+                            if (!val) {
+                                if (macInput) {
                                     macInput.focus();
                                     macInput.select();
-                                }, 30);
-                            } else {
-                                moveToNextRowOrAddNew(row);
+                                } else {
+                                    moveToNextRowOrAddNew(row);
+                                }
+                                return;
+                            }
+
+                            const result = await saveRow(row);
+
+                            if (result && result.is_duplicate) {
+                                // STRICT OPTION 1 HARD BLOCK:
+                                // Do NOT move cursor. Highlight/select SN so scanner can scan correct one.
+                                snInput.focus();
+                                snInput.select();
+                                return;
+                            }
+
+                            if (result && result.success) {
+                                if (macInput) {
+                                    macInput.focus();
+                                    macInput.select();
+                                } else {
+                                    moveToNextRowOrAddNew(row);
+                                }
                             }
                         }
                     });
                 }
 
                 if (macInput) {
-                    macInput.addEventListener('keydown', function(e) {
+                    macInput.addEventListener('keydown', async function(e) {
                         if (e.key === 'Enter' || e.keyCode === 13) {
                             e.preventDefault();
                             e.stopPropagation();
                             clearTimeout(debounceTimer);
-                            saveRow(row);
 
-                            setTimeout(() => {
-                                moveToNextRowOrAddNew(row);
-                            }, 30);
+                            const result = await saveRow(row);
+
+                            if (result && result.is_duplicate) {
+                                snInput.focus();
+                                snInput.select();
+                                return;
+                            }
+
+                            moveToNextRowOrAddNew(row);
                         }
                     });
                 }

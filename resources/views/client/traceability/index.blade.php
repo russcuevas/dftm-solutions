@@ -158,7 +158,7 @@
                         @forelse($items as $item)
                             <tr>
                                 <td style="text-align: center; font-weight: 800; color: var(--dftm-navy);">
-                                    {{ $item->item_no ?? $loop->iteration }}
+                                    {{ $items->firstItem() ? ($items->firstItem() + $loop->index) : $loop->iteration }}
                                 </td>
                                 <td>
                                     @if($item->technical_diagnostic)

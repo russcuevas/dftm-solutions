@@ -213,7 +213,7 @@
                                 <input type="checkbox" class="trace-row-cb" value="{{ $item->id }}" style="accent-color: var(--dftm-navy); transform: scale(1.15); cursor: pointer;">
                             </td>
                             <td style="text-align: center; font-weight: 800; color: var(--dftm-navy);">
-                                {{ $item->item_no ?? $loop->iteration }}
+                                {{ $items->firstItem() ? ($items->firstItem() + $loop->index) : $loop->iteration }}
                             </td>
                             <td>
                                 <input type="text" class="matrix-input row-diagnostic" value="{{ $item->technical_diagnostic }}" placeholder="Diagnosis..." list="diagnosticSuggestions">

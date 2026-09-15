@@ -173,6 +173,20 @@ class IncomingController extends Controller
                     $rowBrand = !empty($brands[$i]) ? trim($brands[$i]) : $transmittal->brand;
 
                     if (!empty($sn) || !empty($mac) || !empty($box) || $itemId) {
+                        $snTrimmed = $sn ? trim($sn) : null;
+                        if (!empty($snTrimmed)) {
+                            $dupCheck = InventoryItem::where('serial_number', $snTrimmed);
+                            if ($itemId) {
+                                $dupCheck->where('id', '!=', $itemId);
+                            }
+                            if ($dupCheck->exists()) {
+                                if ($itemId) {
+                                    $keptIds[] = $itemId;
+                                }
+                                continue;
+                            }
+                        }
+
                         if ($itemId) {
                             $item = InventoryItem::where('transmittal_id', $transmittal->id)->find($itemId);
                             if ($item) {
@@ -180,7 +194,7 @@ class IncomingController extends Controller
                                     'item_no' => $itemNo++,
                                     'brand' => $rowBrand ?: $item->brand,
                                     'model' => $rowModel ?: $item->model,
-                                    'serial_number' => $sn ? trim($sn) : null,
+                                    'serial_number' => $snTrimmed,
                                     'mac_address' => $mac ? trim($mac) : null,
                                     'box_no' => $box ? trim($box) : null,
                                     'company_name' => $transmittal->company_name,
@@ -193,7 +207,7 @@ class IncomingController extends Controller
                                 'item_no' => $itemNo++,
                                 'brand' => $rowBrand ?: $transmittal->brand,
                                 'model' => $rowModel ?: $transmittal->model,
-                                'serial_number' => $sn ? trim($sn) : null,
+                                'serial_number' => $snTrimmed,
                                 'mac_address' => $mac ? trim($mac) : null,
                                 'box_no' => $box ? trim($box) : null,
                                 'technical_diagnostic' => null,
@@ -311,6 +325,16 @@ class IncomingController extends Controller
                     'date_delivered' => $existing->date_delivered ? $existing->date_delivered->format('Y-m-d') : null,
                     'company_name' => $existing->company_name,
                 ];
+
+                return response()->json([
+                    'success' => false,
+                    'is_duplicate' => true,
+                    'message' => "DUPLICATE BLOCKED: Serial Number \"{$sn}\" already exists in Transmittal {$duplicateInfo['transmittal_no']}!",
+                    'duplicate_info' => $duplicateInfo,
+                    'transmittal' => [
+                        'total_quantity' => $transmittal->total_quantity,
+                    ],
+                ]);
             }
         }
 
@@ -352,8 +376,8 @@ class IncomingController extends Controller
 
         return response()->json([
             'success' => true,
-            'is_duplicate' => $isDuplicate,
-            'duplicate_info' => $duplicateInfo,
+            'is_duplicate' => false,
+            'duplicate_info' => null,
             'item' => $item ? [
                 'id' => $item->id,
                 'item_no' => $item->item_no,

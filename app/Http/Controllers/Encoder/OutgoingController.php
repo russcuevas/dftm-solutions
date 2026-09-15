@@ -265,6 +265,7 @@ class OutgoingController extends Controller
 
     public function getBatchData($id)
     {
+        /** @var \App\Models\Batch $batch */
         $batch = Batch::with(['items.transmittal'])->findOrFail($id);
 
         return response()->json([
@@ -333,6 +334,7 @@ class OutgoingController extends Controller
     public function release(Request $request)
     {
         $batchId = $request->input('batch_id');
+        /** @var \App\Models\Batch $batch */
         $batch = Batch::with(['items.transmittal'])->findOrFail($batchId);
 
         $dateReleased = $request->input('date_released', now()->format('Y-m-d'));
