@@ -12,7 +12,7 @@ class InventoryController extends Controller
 {
     public function index(Request $request)
     {
-        $query = InventoryItem::with(['batch', 'outgoingSlip', 'encoder'])->latest();
+        $query = InventoryItem::with(['batch', 'transmittal', 'outgoingSlip', 'encoder'])->latest();
 
         if ($request->filled('search')) {
             $search = $request->search;
@@ -27,6 +27,9 @@ class InventoryController extends Controller
                   ->orWhere('dr_number', 'like', "%{$search}%")
                   ->orWhereHas('batch', function ($bq) use ($search) {
                       $bq->where('batch_no', 'like', "%{$search}%");
+                  })
+                  ->orWhereHas('transmittal', function ($tq) use ($search) {
+                      $tq->where('transmittal_no', 'like', "%{$search}%");
                   });
             });
         }

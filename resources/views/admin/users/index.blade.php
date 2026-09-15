@@ -1,17 +1,17 @@
 @extends('layouts.app')
 
 @section('title', 'User Accounts')
-@section('page_title', 'System Users & Role Management')
+@section('page_title', 'System User Accounts (Admin & Encoder)')
 
 @section('content')
 <div class="card">
     <div class="card-header">
         <div>
-            <div class="card-title"><i class="bi bi-people-fill"></i> System Accounts (Admin & Encoder)</div>
-            <div class="card-subtitle">Manage access credentials, assign Admin or Encoder roles</div>
+            <div class="card-title"><i class="bi bi-people-fill"></i> System Staff Accounts</div>
+            <div class="card-subtitle">Manage internal system credentials for Administrator and Encoder personnel</div>
         </div>
         <button type="button" class="btn btn-primary" data-modal-open="addUserModal">
-            <i class="bi bi-person-plus-fill"></i> Add New Account
+            <i class="bi bi-person-plus-fill"></i> Add Staff Account
         </button>
     </div>
 
@@ -19,14 +19,14 @@
         <table class="dftm-table">
             <thead>
                 <tr>
-                    <th>User</th>
+                    <th>Staff Member</th>
                     <th>Username</th>
-                    <th>Email</th>
+                    <th>Email Address</th>
                     <th>Role</th>
                     <th>Contact Phone</th>
                     <th>Status</th>
                     <th>Created At</th>
-                    <th>Actions</th>
+                    <th style="text-align: center;">Actions</th>
                 </tr>
             </thead>
             <tbody>
@@ -37,15 +37,19 @@
                             <div class="user-avatar" style="width: 32px; height: 32px; font-size: 0.75rem;">
                                 {{ strtoupper(substr($u->name ?? 'U', 0, 1)) }}
                             </div>
-                            <strong>{{ $u->name }}</strong>
+                            <div>
+                                <strong>{{ $u->name }}</strong>
+                            </div>
                         </div>
                     </td>
-                    <td><span class="mono">{{ $u->username ?? '-' }}</span></td>
+                    <td><span class="mono" style="font-weight: 700; color: var(--dftm-navy);">{{ $u->username ?? '-' }}</span></td>
                     <td>{{ $u->email }}</td>
                     <td>
-                        <span class="user-role-badge {{ $u->isAdmin() ? 'role-admin' : 'role-encoder' }}" style="font-size: 0.72rem;">
-                            {{ strtoupper($u->role) }}
-                        </span>
+                        @if($u->isAdmin())
+                            <span class="user-role-badge role-admin" style="font-size: 0.72rem;">ADMIN</span>
+                        @else
+                            <span class="user-role-badge role-encoder" style="font-size: 0.72rem;">ENCODER</span>
+                        @endif
                     </td>
                     <td>{{ $u->phone ?? '-' }}</td>
                     <td>
@@ -54,9 +58,9 @@
                         </span>
                     </td>
                     <td>{{ $u->created_at->format('M d, Y') }}</td>
-                    <td>
-                        <div style="display: flex; gap: 6px;">
-                            <button type="button" class="btn btn-outline btn-sm" onclick="openUserEditModal({{ json_encode($u) }})" title="Edit Account">
+                    <td style="text-align: center;">
+                        <div style="display: flex; gap: 6px; justify-content: center;">
+                            <button type="button" class="btn btn-outline btn-sm" onclick="openUserEditModal({{ json_encode($u) }})" title="Edit Staff Account">
                                 <i class="bi bi-pencil"></i>
                             </button>
                             @if($u->id !== auth()->id())
@@ -73,7 +77,7 @@
                 </tr>
                 @empty
                 <tr>
-                    <td colspan="8" style="text-align: center; color: var(--dftm-slate); padding: 32px;">No user accounts found.</td>
+                    <td colspan="8" style="text-align: center; color: var(--dftm-slate); padding: 32px;">No staff accounts found.</td>
                 </tr>
                 @endforelse
             </tbody>
@@ -89,29 +93,29 @@
 
 <!-- Add User Modal -->
 <div class="modal-backdrop" id="addUserModal">
-    <div class="modal-card">
+    <div class="modal-card" style="max-width: 550px;">
         <form action="{{ route('admin.users.store') }}" method="POST">
             @csrf
             <div class="modal-header">
-                <div class="modal-title"><i class="bi bi-person-plus-fill"></i> Create New User Account</div>
+                <div class="modal-title"><i class="bi bi-person-plus-fill"></i> Add Staff Account (Admin / Encoder)</div>
                 <button type="button" class="modal-close" data-modal-close><i class="bi bi-x-lg"></i></button>
             </div>
             <div class="modal-body">
                 <div class="form-row">
                     <div class="form-group">
                         <label class="form-label">Full Name</label>
-                        <input type="text" name="name" class="form-control" placeholder="e.g. John Doe" required>
+                        <input type="text" name="name" class="form-control" placeholder="e.g. Maria Santos" required>
                     </div>
                     <div class="form-group">
                         <label class="form-label">Username</label>
-                        <input type="text" name="username" class="form-control" placeholder="e.g. jdoe" required>
+                        <input type="text" name="username" class="form-control" placeholder="e.g. encoder_maria" required>
                     </div>
                 </div>
 
                 <div class="form-row">
                     <div class="form-group">
                         <label class="form-label">Email Address</label>
-                        <input type="email" name="email" class="form-control" placeholder="e.g. jdoe@dftm.com" required>
+                        <input type="email" name="email" class="form-control" placeholder="e.g. maria@dftm.com" required>
                     </div>
                     <div class="form-group">
                         <label class="form-label">Phone Number</label>
@@ -121,21 +125,21 @@
 
                 <div class="form-row">
                     <div class="form-group">
-                        <label class="form-label">System Role</label>
+                        <label class="form-label">Staff Role</label>
                         <select name="role" class="form-select" required>
-                            <option value="encoder" selected>Encoder (Entry & Outgoing Operations)</option>
+                            <option value="encoder" selected>Encoder (Receiving, Batches & Slips)</option>
                             <option value="admin">Administrator (Full Access & Management)</option>
                         </select>
                     </div>
                     <div class="form-group">
                         <label class="form-label">Initial Password</label>
-                        <input type="password" name="password" class="form-control" placeholder="Default: password123">
+                        <input type="password" name="password" class="form-control" value="password123" placeholder="Default: password123">
                     </div>
                 </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-outline" data-modal-close>Cancel</button>
-                <button type="submit" class="btn btn-primary">Create User</button>
+                <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg"></i> Create Staff Account</button>
             </div>
         </form>
     </div>
@@ -143,14 +147,14 @@
 
 <!-- Edit User Modal -->
 <div class="modal-backdrop" id="userEditModal">
-    <div class="modal-card">
+    <div class="modal-card" style="max-width: 550px;">
         <form id="userEditForm" method="POST" data-base-action="{{ url('admin/users/__ID__') }}">
             @csrf
             @method('PUT')
             <input type="hidden" id="editUserId">
 
             <div class="modal-header">
-                <div class="modal-title"><i class="bi bi-person-gear"></i> Edit User Account</div>
+                <div class="modal-title"><i class="bi bi-person-gear"></i> Edit Staff Account</div>
                 <button type="button" class="modal-close" data-modal-close><i class="bi bi-x-lg"></i></button>
             </div>
             <div class="modal-body">
@@ -178,8 +182,8 @@
 
                 <div class="form-row">
                     <div class="form-group">
-                        <label class="form-label">System Role</label>
-                        <select name="role" id="editUserRole" class="form-select">
+                        <label class="form-label">Staff Role</label>
+                        <select name="role" id="editUserRole" class="form-select" required>
                             <option value="encoder">Encoder</option>
                             <option value="admin">Administrator</option>
                         </select>
@@ -195,14 +199,31 @@
 
                 <div class="form-group">
                     <label class="form-label">New Password (leave blank to keep current)</label>
-                    <input type="password" name="password" class="form-control" placeholder="New Password">
+                    <input type="password" name="password" class="form-control" placeholder="Optional new password">
                 </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-outline" data-modal-close>Cancel</button>
-                <button type="submit" class="btn btn-primary">Save Changes</button>
+                <button type="submit" class="btn btn-primary"><i class="bi bi-save"></i> Save Changes</button>
             </div>
         </form>
     </div>
 </div>
+
+<script>
+function openUserEditModal(user) {
+    document.getElementById('editUserId').value = user.id;
+    document.getElementById('editUserName').value = user.name || '';
+    document.getElementById('editUserUsername').value = user.username || '';
+    document.getElementById('editUserEmail').value = user.email || '';
+    document.getElementById('editUserPhone').value = user.phone || '';
+    document.getElementById('editUserRole').value = user.role || 'encoder';
+    document.getElementById('editUserStatus').value = user.status || 'active';
+
+    const form = document.getElementById('userEditForm');
+    form.action = form.dataset.baseAction.replace('__ID__', user.id);
+
+    document.getElementById('userEditModal').classList.add('active');
+}
+</script>
 @endsection

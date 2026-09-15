@@ -290,6 +290,12 @@ body {
     border: 1px solid rgba(56, 189, 248, 0.3);
 }
 
+.role-client {
+    background: rgba(168, 85, 247, 0.25);
+    color: #D8B4FE;
+    border: 1px solid rgba(168, 85, 247, 0.4);
+}
+
 /* Main Content Area */
 .app-main {
     margin-left: var(--sidebar-width);

@@ -10,6 +10,7 @@ class InventoryItem extends Model
     use HasFactory;
 
     protected $fillable = [
+        'transmittal_id',
         'batch_id',
         'outgoing_slip_id',
         'item_no',
@@ -38,6 +39,11 @@ class InventoryItem extends Model
         'date_delivered' => 'date',
         'date_outgoing' => 'date',
     ];
+
+    public function transmittal()
+    {
+        return $this->belongsTo(Transmittal::class, 'transmittal_id');
+    }
 
     public function batch()
     {

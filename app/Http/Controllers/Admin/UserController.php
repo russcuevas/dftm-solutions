@@ -13,12 +13,18 @@ class UserController extends Controller
 {
     public function index()
     {
-        $users = User::latest()->paginate(15);
+        $users = User::whereIn('role', ['admin', 'encoder'])->latest()->paginate(15);
         return view('admin.users.index', compact('users'));
     }
 
     public function store(Request $request)
     {
+        $request->validate([
+            'username' => 'nullable|unique:users,username',
+            'email' => 'nullable|email|unique:users,email',
+            'role' => 'required|in:admin,encoder',
+        ]);
+
         $user = User::create([
             'name' => $request->input('name'),
             'username' => $request->input('username'),
@@ -29,14 +35,20 @@ class UserController extends Controller
             'password' => Hash::make($request->input('password', 'password123')),
         ]);
 
-        ActivityLog::log('USER_CREATED', "Admin created user {$user->name} ({$user->role}).");
+        ActivityLog::log('USER_CREATED', "Admin created staff user {$user->name} ({$user->role}).");
 
-        return back()->with('success', "User {$user->name} created successfully!");
+        return back()->with('success', "Staff user {$user->name} created successfully!");
     }
 
     public function update(Request $request, $id)
     {
-        $user = User::findOrFail($id);
+        $user = User::whereIn('role', ['admin', 'encoder'])->findOrFail($id);
+
+        $request->validate([
+            'username' => 'nullable|unique:users,username,' . $id,
+            'email' => 'nullable|email|unique:users,email,' . $id,
+            'role' => 'required|in:admin,encoder',
+        ]);
 
         $data = [
             'name' => $request->input('name', $user->name),

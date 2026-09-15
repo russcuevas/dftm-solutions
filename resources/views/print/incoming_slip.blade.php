@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Incoming Repair Slip - {{ $batch->slip_no }}</title>
+    <title>Incoming Transmittal Report - {{ $transmittal->transmittal_no }}</title>
     <style>
         @page {
             size: A4 portrait;
@@ -16,7 +16,7 @@
             padding: 20px;
             font-family: Arial, Calibri, 'Segoe UI', Tahoma, sans-serif;
             color: #000000;
-            font-size: 11pt;
+            font-size: 10.5pt;
             margin: 0;
         }
         .slip-wrapper {
@@ -50,22 +50,15 @@
             background: #00205B;
             color: #FFFFFF;
         }
-        .btn-primary:hover {
-            background: #00153D;
-        }
         .btn-outline {
             background: #FFFFFF;
             border-color: #CBD5E1;
             color: #475569;
         }
-        .btn-outline:hover {
-            background: #F8FAFC;
-        }
 
-        /* Top Brand Header */
         .brand-header {
             text-align: center;
-            margin-bottom: 12px;
+            margin-bottom: 8px;
         }
         .brand-header img {
             height: 48px;
@@ -74,18 +67,16 @@
             margin-bottom: 4px;
         }
 
-        /* Main Sheet Title */
         .slip-title {
             text-align: center;
-            font-size: 17pt;
+            font-size: 16pt;
             font-weight: 900;
             letter-spacing: 0.5px;
-            margin: 8px 0 16px 0;
+            margin: 6px 0 14px 0;
             color: #000000;
             text-transform: uppercase;
         }
 
-        /* Excel-Style Bordered Table */
         .excel-table {
             width: 100%;
             border-collapse: collapse;
@@ -93,66 +84,62 @@
         }
         .excel-table th, .excel-table td {
             border: 1px solid #000000;
-            padding: 6px 10px;
-            font-size: 10.5pt;
+            padding: 5px 8px;
+            font-size: 10pt;
             line-height: 1.3;
         }
 
         .header-label {
             font-weight: 800;
             white-space: nowrap;
-            width: 17%;
+            width: 20%;
             background: #FFFFFF;
         }
         .header-val {
             font-weight: 700;
-            width: 33%;
+            width: 30%;
         }
 
-        .batch-banner {
-            text-align: center;
+        .model-banner {
+            text-align: left;
             font-weight: 900;
-            font-size: 12pt;
+            font-size: 11pt;
             letter-spacing: 0.5px;
-            background: #FFFFFF;
+            background: #F8FAFC;
             padding: 6px 10px;
             text-transform: uppercase;
-        }
-
-        .desc-banner {
-            text-align: center;
-            font-weight: 800;
-            font-size: 11pt;
-            background: #FFFFFF;
-            padding: 5px 10px;
-            text-transform: uppercase;
+            border: 1px solid #000000;
+            margin-top: 14px;
+            display: flex;
+            justify-content: space-between;
         }
 
         .sub-header-row th {
             font-weight: 800;
             text-align: center;
             background: #FFFFFF;
-            padding: 6px 10px;
+            padding: 6px 8px;
         }
 
         .col-no {
-            width: 55px;
+            width: 45px;
             text-align: center;
             font-weight: bold;
         }
         .col-serial {
-            width: 50%;
+            width: 42%;
             font-family: 'Consolas', 'Courier New', monospace;
-            font-size: 10.5pt;
+            font-size: 10pt;
         }
         .col-mac {
-            width: 50%;
+            width: 42%;
             font-family: 'Consolas', 'Courier New', monospace;
-            font-size: 10.5pt;
+            font-size: 10pt;
         }
-
-        .cell-bold {
-            font-weight: 700;
+        .col-box {
+            width: 16%;
+            text-align: center;
+            font-size: 10pt;
         }
 
         @media print {
@@ -169,7 +156,7 @@
                 padding: 0;
                 max-width: 100%;
             }
-            .excel-table th, .excel-table td {
+            .excel-table th, .excel-table td, .model-banner {
                 border: 1px solid #000000 !important;
                 -webkit-print-color-adjust: exact;
                 print-color-adjust: exact;
@@ -200,74 +187,94 @@
     </div>
 
     <!-- Main Title -->
-    <div class="slip-title">INCOMING REPAIR SLIP</div>
+    <div class="slip-title">INCOMING TRANSMITTAL REPORT</div>
 
-    <!-- Exact Excel Structure from Reference Layout -->
+    <!-- Header Information Block (Excel-Style) -->
     <table class="excel-table">
-        <!-- Header Info Row 1: Company Name & Status -->
         <tr>
+            <td class="header-label">TRANSMITTAL NO:</td>
+            <td class="header-val" style="font-family: monospace; font-size: 11pt;">{{ $transmittal->transmittal_no }}</td>
             <td class="header-label">COMPANY NAME:</td>
-            <td class="header-val">{{ $batch->company_name ?? '' }}</td>
-            <td class="header-label">STATUS:</td>
-            <td class="header-val">{{ $batch->status ?: '-' }}</td>
+            <td class="header-val">{{ $transmittal->company_name ?? 'DFTM DIGITAL SOLUTIONS' }}</td>
         </tr>
-
-        <!-- Header Info Row 2: Date Received & Total Quantity -->
         <tr>
             <td class="header-label">DATE RECEIVED:</td>
-            <td class="header-val">{{ $batch->date_delivered ? $batch->date_delivered->format('Y-m-d') : '' }}</td>
+            <td class="header-val">{{ $transmittal->date_received ? $transmittal->date_received->format('Y-m-d') : '-' }}</td>
             <td class="header-label">TOTAL QUANTITY:</td>
-            <td class="header-val">{{ $batch->total_quantity ?? $batch->items->count() }}</td>
-        </tr>
-
-        <!-- Batch Banner Row -->
-        <tr>
-            <td colspan="4" class="batch-banner">{{ $batch->batch_no ?? 'BATCH 1' }}</td>
+            <td class="header-val" style="font-weight: 900; font-size: 11pt;">{{ $transmittal->total_quantity }} PCS</td>
         </tr>
     </table>
 
-    <!-- Items Subtable -->
-    <table class="excel-table" style="border-top: none; margin-top: -1px;">
-        <thead>
-            <!-- Sub-Header Row 1: NO., BRAND, MODEL -->
-            <tr class="sub-header-row">
-                <th class="col-no" rowspan="2">NO.</th>
-                <th>BRAND: {{ $batch->brand ?? '' }}</th>
-                <th>MODEL: {{ $batch->model ?? '' }}</th>
-            </tr>
-            <!-- Sub-Header Row 2: SERIAL NUMBER, MAC ADDRESS -->
-            <tr class="sub-header-row">
-                <th>SERIAL NUMBER</th>
-                <th>MAC ADDRESS</th>
-            </tr>
-        </thead>
-        <tbody>
-            @php
-                $itemRows = $batch->items;
-                $rowCount = max(20, $itemRows->count());
-            @endphp
-            @for($i = 0; $i < $rowCount; $i++)
-                @php $item = $itemRows[$i] ?? null; @endphp
-                <tr>
-                    <td class="col-no">{{ $i + 1 }}</td>
-                    <td class="col-serial {{ $item ? 'cell-bold' : '' }}">{{ $item?->serial_number ?? '' }}</td>
-                    <td class="col-mac">{{ $item?->mac_address ?? '' }}</td>
+    <!-- Consolidated Report Grouped Per Model ("isang buo pero naka per model lang") -->
+    @php
+        $grandTotal = 0;
+    @endphp
+
+    @forelse($itemsByModel as $modelName => $modelItems)
+        @php
+            $firstItem = $modelItems->first();
+            $brandName = $firstItem?->brand ?: ($transmittal->brand ?: 'N/A');
+            $grandTotal += $modelItems->count();
+        @endphp
+
+        <div class="model-banner">
+            <span>MODEL: {{ strtoupper($modelName) }} &nbsp;&bull;&nbsp; BRAND: {{ strtoupper($brandName) }}</span>
+            <span>SUBTOTAL: {{ $modelItems->count() }} PCS</span>
+        </div>
+
+        <table class="excel-table" style="border-top: none;">
+            <thead>
+                <tr class="sub-header-row">
+                    <th class="col-no">NO.</th>
+                    <th class="col-serial">SERIAL NUMBER</th>
+                    <th class="col-mac">MAC ADDRESS</th>
+                    <th class="col-box">BOX NO.</th>
                 </tr>
-            @endfor
-        </tbody>
+            </thead>
+            <tbody>
+                @foreach($modelItems as $item)
+                <tr>
+                    <td class="col-no">{{ $loop->iteration }}</td>
+                    <td class="col-serial">{{ $item->serial_number ?? '-' }}</td>
+                    <td class="col-mac">{{ $item->mac_address ?? '-' }}</td>
+                    <td class="col-box">{{ $item->box_no ?? '-' }}</td>
+                </tr>
+                @endforeach
+            </tbody>
+        </table>
+    @empty
+        <div style="text-align: center; padding: 24px; border: 1px solid #000000; margin-top: 14px;">
+            No units recorded for this transmittal.
+        </div>
+    @endforelse
+
+    <!-- Grand Summary Footer Block -->
+    <table class="excel-table" style="margin-top: 16px;">
+        <tr>
+            <td style="font-weight: 900; text-align: right; width: 75%; background: #F8FAFC;">
+                CONSOLIDATED GRAND TOTAL RECEIVED:
+            </td>
+            <td style="font-weight: 900; text-align: center; width: 25%; font-size: 11pt; background: #F8FAFC;">
+                {{ $transmittal->total_quantity }} PCS
+            </td>
+        </tr>
     </table>
 
-    <!-- Signatures block -->
-    <div style="margin-top: 30px; display: grid; grid-template-columns: 1fr 1fr; gap: 40px; font-size: 10pt;">
-        <div>
-            <div style="border-bottom: 1px solid #000; height: 35px; margin-bottom: 5px;"></div>
-            <div style="text-align: center; font-weight: bold;">Encoded / Received By (DFTM)</div>
-        </div>
-        <div>
-            <div style="border-bottom: 1px solid #000; height: 35px; margin-bottom: 5px;"></div>
-            <div style="text-align: center; font-weight: bold;">Delivered / Endorsed By</div>
-        </div>
-    </div>
+    <!-- Signatures -->
+    <table style="width: 100%; margin-top: 36px; border-collapse: collapse;">
+        <tr>
+            <td style="width: 50%; text-align: center; padding-right: 20px;">
+                <div style="font-size: 9.5pt; font-weight: 700; margin-bottom: 40px;">RECEIVED & ENCODED BY:</div>
+                <div style="border-bottom: 1px solid #000000; width: 80%; margin: 0 auto;"></div>
+                <div style="font-size: 9pt; margin-top: 4px; font-weight: 600;">{{ $transmittal->encoder?->name ?? 'DFTM Staff' }}</div>
+            </td>
+            <td style="width: 50%; text-align: center; padding-left: 20px;">
+                <div style="font-size: 9.5pt; font-weight: 700; margin-bottom: 40px;">CHECKED & VERIFIED BY:</div>
+                <div style="border-bottom: 1px solid #000000; width: 80%; margin: 0 auto;"></div>
+                <div style="font-size: 9pt; margin-top: 4px; font-weight: 600;">Supervisor / QA Personnel</div>
+            </td>
+        </tr>
+    </table>
 </div>
 
 </body>

@@ -1,42 +1,93 @@
 @extends('layouts.app')
 
 @section('title', 'Admin Dashboard')
-@section('page_title', 'Admin Overview & Stock Metrics')
+@section('page_title', 'Admin Overview & Flow Metrics')
 
 @section('content')
-<!-- Metric Stat Cards Grid -->
-<div class="stat-grid">
-    <!-- In-Stock Inventory -->
+<style>
+.stat-grid-4 {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 24px;
+}
+@media (max-width: 1200px) {
+    .stat-grid-4 {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+@media (max-width: 640px) {
+    .stat-grid-4 {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+
+<!-- Metric Stat Cards Grid (4 boxes per row) -->
+<div class="stat-grid-4">
+    <!-- Row 1: Flow & Inventory Volume (4 Boxes) -->
+    <!-- 1. Incoming Transmittals -->
+    <div class="stat-card" style="--stat-color: #0284C7; --stat-bg: #E0F2FE;">
+        <div class="stat-header">
+            <span class="stat-label">Transmittals</span>
+            <div class="stat-icon"><i class="bi bi-box-arrow-in-down"></i></div>
+        </div>
+        <div class="stat-value">{{ number_format($totalTransmittals) }}</div>
+        <div class="stat-desc">Incoming repair shipments</div>
+    </div>
+
+    <!-- 2. Traceability Batches -->
     <div class="stat-card" style="--stat-color: #00205B; --stat-bg: #E0E7FF;">
+        <div class="stat-header">
+            <span class="stat-label">Batches Formed</span>
+            <div class="stat-icon"><i class="bi bi-diagram-3-fill"></i></div>
+        </div>
+        <div class="stat-value">{{ number_format($totalBatches) }}</div>
+        <div class="stat-desc">Traceability batches</div>
+    </div>
+
+    <!-- 3. Total Inventory Units -->
+    <div class="stat-card" style="--stat-color: #6366F1; --stat-bg: #EEF2FF;">
+        <div class="stat-header">
+            <span class="stat-label">Total Units</span>
+            <div class="stat-icon"><i class="bi bi-cpu-fill"></i></div>
+        </div>
+        <div class="stat-value">{{ number_format($totalUnits) }}</div>
+        <div class="stat-desc">Total units in system</div>
+    </div>
+
+    <!-- 4. In-Stock Inventory -->
+    <div class="stat-card" style="--stat-color: #2563EB; --stat-bg: #DBEAFE;">
         <div class="stat-header">
             <span class="stat-label">Units in Stock</span>
             <div class="stat-icon"><i class="bi bi-box-seam-fill"></i></div>
         </div>
         <div class="stat-value">{{ number_format($inStockUnits) }}</div>
-        <div class="stat-desc">Available for repair / release</div>
+        <div class="stat-desc">Available warehouse units</div>
     </div>
 
-    <!-- In Process Units -->
+    <!-- Row 2: Diagnostics & Release Status (4 Boxes) -->
+    <!-- 5. In Process Units -->
     <div class="stat-card" style="--stat-color: #D97706; --stat-bg: #FEF3C7;">
         <div class="stat-header">
             <span class="stat-label">In Process</span>
             <div class="stat-icon"><i class="bi bi-hourglass-split"></i></div>
         </div>
         <div class="stat-value">{{ number_format($inProcessCount) }}</div>
-        <div class="stat-desc">Arrived / currently undergoing repair</div>
+        <div class="stat-desc">Undergoing diagnostic / repair</div>
     </div>
 
-    <!-- Repaired Units -->
+    <!-- 6. Repaired Units -->
     <div class="stat-card" style="--stat-color: #059669; --stat-bg: #D1FAE5;">
         <div class="stat-header">
-            <span class="stat-label">Repaired</span>
+            <span class="stat-label">Repaired OK</span>
             <div class="stat-icon"><i class="bi bi-check-circle-fill"></i></div>
         </div>
         <div class="stat-value">{{ number_format($repairedCount) }}</div>
         <div class="stat-desc">Diagnostics passed & parts replaced</div>
     </div>
 
-    <!-- BER (Beyond Economic Repair) -->
+    <!-- 7. BER (Beyond Economic Repair) -->
     <div class="stat-card" style="--stat-color: #DC2626; --stat-bg: #FEE2E2;">
         <div class="stat-header">
             <span class="stat-label">BER Units</span>
@@ -46,67 +97,100 @@
         <div class="stat-desc">Beyond Economic Repair</div>
     </div>
 
-    <!-- Released / Outgoing -->
+    <!-- 8. Released / Outgoing -->
     <div class="stat-card" style="--stat-color: #7C3AED; --stat-bg: #EDE9FE;">
         <div class="stat-header">
-            <span class="stat-label">Released / Outgoing</span>
+            <span class="stat-label">Released</span>
             <div class="stat-icon"><i class="bi bi-box-arrow-up-right"></i></div>
         </div>
         <div class="stat-value">{{ number_format($releasedUnits) }}</div>
-        <div class="stat-desc">Delivered to customers / clients</div>
+        <div class="stat-desc">Dispatched to customers</div>
     </div>
 </div>
-
-<!-- Stock Alerts Notification if low stock batches exist -->
-@if($lowStockBatches->count() > 0)
-<div class="card" style="border-left: 4px solid #F59E0B; margin-bottom: 24px;">
-    <div class="card-header" style="background: #FFFBEB;">
-        <div class="card-title" style="color: #B45309;">
-            <i class="bi bi-bell-fill"></i> Inventory Stock Alerts
-        </div>
-        <span class="badge badge-in-process">{{ $lowStockBatches->count() }} Batches Low Stock</span>
-    </div>
-    <div class="card-body" style="padding: 16px 24px;">
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px;">
-            @foreach($lowStockBatches as $b)
-                <div style="background: #FFFFFF; border: 1px solid #FDE68A; padding: 12px; border-radius: var(--radius-md); display: flex; justify-content: space-between; align-items: center;">
-                    <div>
-                        <strong style="color: var(--dftm-navy);">{{ $b->batch_no }}</strong> - {{ $b->brand }} {{ $b->model }}
-                        <div style="font-size: 0.75rem; color: var(--dftm-slate);">{{ $b->company_name }}</div>
-                    </div>
-                    <div style="text-align: right;">
-                        <span class="badge badge-ber" style="font-size: 0.8rem;">{{ $b->in_stock_quantity }} Remaining</span>
-                    </div>
-                </div>
-            @endforeach
-        </div>
-    </div>
-</div>
-@endif
 
 <!-- Two Column Main Grid -->
 <div class="dashboard-main-grid">
-    <!-- Left Column: Recent Batches & Outgoing Slips -->
-    <div>
-        <!-- Recent Incoming Batches -->
+    <!-- Left Column: Recent Transmittals, Batches & Outgoing Slips -->
+    <div style="display: flex; flex-direction: column; gap: 24px;">
+        <!-- Recent Incoming Transmittals -->
         <div class="card">
             <div class="card-header">
                 <div>
-                    <div class="card-title"><i class="bi bi-box-arrow-in-down"></i> Recent Incoming Batches</div>
-                    <div class="card-subtitle">Latest batch repair deliveries received</div>
+                    <div class="card-title"><i class="bi bi-box-arrow-in-down"></i> Recent Incoming Transmittals</div>
+                    <div class="card-subtitle">Latest shipments received and encoded</div>
                 </div>
                 <a href="{{ route('admin.incoming.create') }}" class="btn btn-primary btn-sm">
-                    <i class="bi bi-plus-lg"></i> New Incoming Slip
+                    <i class="bi bi-plus-lg"></i> New Transmittal
                 </a>
             </div>
             <div class="table-responsive">
                 <table class="dftm-table">
                     <thead>
                         <tr>
-                            <th>Slip #</th>
-                            <th>Batch No</th>
+                            <th>Transmittal #</th>
+                            <th>Company</th>
                             <th>Brand / Model</th>
                             <th>Total Qty</th>
+                            <th>Status</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse($recentTransmittals as $transmittal)
+                        <tr>
+                            <td><span class="mono" style="font-weight: 700; color: var(--dftm-navy);">{{ $transmittal->transmittal_no }}</span></td>
+                            <td>{{ $transmittal->company_name ?? '-' }}</td>
+                            <td>{{ $transmittal->brand ?? 'Mixed' }} {{ $transmittal->model ?? '' }}</td>
+                            <td><strong>{{ $transmittal->total_quantity }}</strong> pcs</td>
+                            <td>
+                                <span class="badge {{ $transmittal->status === 'COMPLETED' ? 'badge-repaired' : 'badge-in-process' }}">
+                                    {{ $transmittal->status }}
+                                </span>
+                            </td>
+                            <td>
+                                <a href="{{ route('admin.incoming.show', $transmittal->id) }}" class="btn btn-outline btn-sm">
+                                    <i class="bi bi-eye"></i> View
+                                </a>
+                            </td>
+                        </tr>
+                        @empty
+                        <tr>
+                            <td colspan="6" style="text-align: center; color: var(--dftm-slate); padding: 32px 16px;">
+                                <div style="font-size: 2rem; color: #CBD5E1; margin-bottom: 8px;"><i class="bi bi-inboxes"></i></div>
+                                <div style="font-weight: 600; font-size: 0.92rem; color: var(--dftm-navy);">No incoming transmittals recorded yet</div>
+                                <div style="font-size: 0.8rem; color: var(--dftm-slate-light); margin-top: 4px;">Incoming shipments will be listed here once encoded.</div>
+                            </td>
+                        </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+            <div class="card-footer">
+                <span style="font-size: 0.8rem; color: var(--dftm-slate);">Showing latest 5 transmittals</span>
+                <a href="{{ route('admin.incoming.index') }}" style="font-size: 0.85rem; font-weight: 600; color: var(--dftm-accent); text-decoration: none;">
+                    View All Transmittals <i class="bi bi-arrow-right"></i>
+                </a>
+            </div>
+        </div>
+
+        <!-- Recent Traceability Batches -->
+        <div class="card">
+            <div class="card-header">
+                <div>
+                    <div class="card-title"><i class="bi bi-diagram-3"></i> Traceability Batches</div>
+                    <div class="card-subtitle">Units grouped into repair & diagnostics batches</div>
+                </div>
+                <a href="{{ route('admin.traceability.createBatch') }}" class="btn btn-primary btn-sm">
+                    <i class="bi bi-folder-plus"></i> Form Batch
+                </a>
+            </div>
+            <div class="table-responsive">
+                <table class="dftm-table">
+                    <thead>
+                        <tr>
+                            <th>Batch No</th>
+                            <th>Brand / Model</th>
+                            <th>Total Units</th>
                             <th>In-Stock</th>
                             <th>Status</th>
                             <th>Action</th>
@@ -115,28 +199,27 @@
                     <tbody>
                         @forelse($recentBatches as $batch)
                         <tr>
-                            <td><span class="mono">{{ $batch->slip_no }}</span></td>
-                            <td><strong>{{ $batch->batch_no }}</strong></td>
+                            <td><strong style="color: var(--dftm-navy);">{{ $batch->batch_no }}</strong></td>
                             <td>{{ $batch->brand }} {{ $batch->model }}</td>
                             <td><strong>{{ $batch->total_quantity }}</strong> pcs</td>
-                            <td><span class="badge badge-stock">{{ $batch->in_stock_quantity }} available</span></td>
+                            <td><span class="badge badge-stock">{{ $batch->in_stock_quantity }} pcs</span></td>
                             <td>
                                 <span class="badge {{ $batch->status === 'COMPLETED' ? 'badge-repaired' : ($batch->status === 'PARTIAL' ? 'badge-in-process' : 'badge-stock') }}">
                                     {{ $batch->status }}
                                 </span>
                             </td>
                             <td>
-                                <a href="{{ route('admin.incoming.show', $batch->id) }}" class="btn btn-outline btn-sm">
-                                    <i class="bi bi-eye"></i> View
+                                <a href="{{ route('admin.traceability.index', ['batch_id' => $batch->id]) }}" class="btn btn-outline btn-sm">
+                                    <i class="bi bi-sliders"></i> Diagnostic Matrix
                                 </a>
                             </td>
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="7" style="text-align: center; color: var(--dftm-slate); padding: 36px 16px;">
-                                <div style="font-size: 2rem; color: #CBD5E1; margin-bottom: 8px;"><i class="bi bi-inboxes"></i></div>
-                                <div style="font-weight: 600; font-size: 0.92rem; color: var(--dftm-navy);">No incoming batches recorded yet</div>
-                                <div style="font-size: 0.8rem; color: var(--dftm-slate-light); margin-top: 4px;">Incoming repair batches will be listed here once encoded.</div>
+                            <td colspan="6" style="text-align: center; color: var(--dftm-slate); padding: 32px 16px;">
+                                <div style="font-size: 2rem; color: #CBD5E1; margin-bottom: 8px;"><i class="bi bi-boxes"></i></div>
+                                <div style="font-weight: 600; font-size: 0.92rem; color: var(--dftm-navy);">No traceability batches created yet</div>
+                                <div style="font-size: 0.8rem; color: var(--dftm-slate-light); margin-top: 4px;">Form batches from incoming units to track diagnostic & repair matrix.</div>
                             </td>
                         </tr>
                         @endforelse
@@ -145,21 +228,21 @@
             </div>
             <div class="card-footer">
                 <span style="font-size: 0.8rem; color: var(--dftm-slate);">Showing latest 5 batches</span>
-                <a href="{{ route('admin.incoming.index') }}" style="font-size: 0.85rem; font-weight: 600; color: var(--dftm-accent); text-decoration: none;">
-                    View All Batches <i class="bi bi-arrow-right"></i>
+                <a href="{{ route('admin.traceability.index') }}" style="font-size: 0.85rem; font-weight: 600; color: var(--dftm-accent); text-decoration: none;">
+                    View Traceability <i class="bi bi-arrow-right"></i>
                 </a>
             </div>
         </div>
 
-        <!-- Recent Outgoing Slips -->
+        <!-- Recent Outgoing Releases -->
         <div class="card">
             <div class="card-header">
                 <div>
-                    <div class="card-title"><i class="bi bi-box-arrow-up-right"></i> Recent Outgoing Repair Releases</div>
-                    <div class="card-subtitle">Latest items delivered/released to customers</div>
+                    <div class="card-title"><i class="bi bi-box-arrow-up-right"></i> Recent Outgoing Reports & Releases</div>
+                    <div class="card-subtitle">Batch release documentation generated for dispatch</div>
                 </div>
-                <a href="{{ route('admin.outgoing.create') }}" class="btn btn-accent btn-sm">
-                    <i class="bi bi-send-plus"></i> New Outgoing Slip
+                <a href="{{ route('admin.outgoing.index') }}" class="btn btn-accent btn-sm">
+                    <i class="bi bi-file-earmark-arrow-down"></i> Generate Outgoing Report
                 </a>
             </div>
             <div class="table-responsive">
@@ -196,7 +279,7 @@
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="6" style="text-align: center; color: var(--dftm-slate); padding: 36px 16px;">
+                            <td colspan="6" style="text-align: center; color: var(--dftm-slate); padding: 32px 16px;">
                                 <div style="font-size: 2rem; color: #CBD5E1; margin-bottom: 8px;"><i class="bi bi-send-x"></i></div>
                                 <div style="font-weight: 600; font-size: 0.92rem; color: var(--dftm-navy);">No outgoing slips created yet</div>
                                 <div style="font-size: 0.8rem; color: var(--dftm-slate-light); margin-top: 4px;">Released repair slips and items will be displayed here.</div>
@@ -216,7 +299,7 @@
     </div>
 
     <!-- Right Column: Brand Distribution & Recent Activity Audit -->
-    <div>
+    <div style="display: flex; flex-direction: column; gap: 24px;">
         <!-- Inventory Brand Distribution -->
         <div class="card">
             <div class="card-header">

@@ -3,9 +3,9 @@
 namespace App\Http\Controllers\Encoder;
 
 use App\Http\Controllers\Controller;
-use App\Models\OutgoingSlip;
-use App\Models\InventoryItem;
 use App\Models\Batch;
+use App\Models\InventoryItem;
+use App\Models\OutgoingSlip;
 use App\Models\ActivityLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -15,26 +15,23 @@ class OutgoingController extends Controller
 {
     public function index(Request $request)
     {
-        $query = OutgoingSlip::with(['items', 'encoder'])->latest();
+        $batches = Batch::with('items')->latest()->get();
 
-        if ($request->filled('search')) {
-            $search = $request->search;
-            $query->where(function ($q) use ($search) {
-                $q->where('slip_no', 'like', "%{$search}%")
-                    ->orWhere('customer_name', 'like', "%{$search}%")
-                    ->orWhere('company_name', 'like', "%{$search}%")
-                    ->orWhere('si_number', 'like', "%{$search}%")
-                    ->orWhere('dr_number', 'like', "%{$search}%");
-            });
+        $selectedBatchId = $request->input('batch_id');
+        if (!$selectedBatchId && $batches->isNotEmpty()) {
+            $selectedBatchId = $batches->first()->id;
         }
 
-        $outgoingSlips = $query->paginate(15)->withQueryString();
-        return view('encoder.outgoing.index', compact('outgoingSlips'));
+        $selectedBatch = $selectedBatchId ? Batch::with(['items.transmittal'])->find($selectedBatchId) : null;
+        $items = $selectedBatch ? $selectedBatch->items : collect();
+
+        return view('encoder.outgoing.index', compact('batches', 'selectedBatch', 'selectedBatchId', 'items'));
     }
 
     public function create(Request $request)
     {
         $slipNo = 'ORS-' . date('Ymd') . '-' . str_pad(OutgoingSlip::count() + 1, 3, '0', STR_PAD_LEFT);
+
         $availableItems = InventoryItem::with('batch')
             ->where('stock_status', 'IN_STOCK')
             ->orderBy('batch_id')
@@ -52,7 +49,7 @@ class OutgoingController extends Controller
         $selectedItemIds = $request->input('selected_items', []);
 
         if (empty($selectedItemIds) || !is_array($selectedItemIds)) {
-            return back()->withInput()->with('error', 'Please select at least one item to outgoing.');
+            return back()->withInput()->with('error', 'Please select at least one serialized item to release/outgoing.');
         }
 
         $slip = DB::transaction(function () use ($request, $selectedItemIds) {
@@ -86,7 +83,7 @@ class OutgoingController extends Controller
             ]);
 
             $affectedBatchIds = [];
-            foreach ($items as $item) {
+            foreach ($items as $index => $item) {
                 $item->update([
                     'outgoing_slip_id' => $slip->id,
                     'stock_status' => 'RELEASED',
@@ -105,7 +102,9 @@ class OutgoingController extends Controller
 
             foreach (array_keys($affectedBatchIds) as $bId) {
                 $batch = Batch::find($bId);
-                $batch?->recalculateQuantities();
+                if ($batch) {
+                    $batch->recalculateQuantities();
+                }
             }
 
             ActivityLog::log('OUTGOING_ENCODED', "Encoder created Outgoing Slip {$slip->slip_no} for {$slip->customer_name} ({$slip->total_quantity} items).");
@@ -168,7 +167,6 @@ class OutgoingController extends Controller
             $activeSlipItemIds = [];
             $affectedBatchIds = [];
 
-            // 1. Process current / modified items in this slip
             if (is_array($serials)) {
                 foreach ($serials as $i => $sn) {
                     $itemId = $itemIds[$i] ?? null;
@@ -194,7 +192,6 @@ class OutgoingController extends Controller
                                 if ($item->batch_id) $affectedBatchIds[$item->batch_id] = true;
                             }
                         } else {
-                            // New row item added to outgoing slip
                             $newItem = InventoryItem::create([
                                 'outgoing_slip_id' => $slip->id,
                                 'serial_number' => $sn ? trim($sn) : null,
@@ -216,7 +213,6 @@ class OutgoingController extends Controller
                 }
             }
 
-            // 2. Return removed items to in-stock inventory
             $removedItems = $slip->items()->whereNotIn('id', $activeSlipItemIds)->get();
             foreach ($removedItems as $removed) {
                 if ($removed->batch_id) $affectedBatchIds[$removed->batch_id] = true;
@@ -229,7 +225,6 @@ class OutgoingController extends Controller
                 ]);
             }
 
-            // 3. Attach newly selected available units from stock to this slip
             if (!empty($newSelectedUnitIds) && is_array($newSelectedUnitIds)) {
                 $newUnits = InventoryItem::whereIn('id', $newSelectedUnitIds)
                     ->where('stock_status', 'IN_STOCK')
@@ -265,9 +260,122 @@ class OutgoingController extends Controller
         return redirect()->route('encoder.outgoing.show', $slip->id)->with('success', "Outgoing Repair Slip {$slip->slip_no} updated successfully! (Stocks updated)");
     }
 
-    public function print($id)
+    public function getBatchData($id)
     {
-        $slip = OutgoingSlip::with('items')->findOrFail($id);
-        return view('print.outgoing_slip', compact('slip'));
+        $batch = Batch::with(['items.transmittal'])->findOrFail($id);
+
+        return response()->json([
+            'success' => true,
+            'batch' => [
+                'id' => $batch->id,
+                'batch_no' => $batch->batch_no,
+                'company_name' => $batch->company_name,
+                'brand' => $batch->brand,
+                'model' => $batch->model,
+                'total_quantity' => $batch->total_quantity,
+                'date_delivered' => $batch->date_delivered ? $batch->date_delivered->format('Y-m-d') : null,
+                'status' => $batch->status,
+            ],
+            'items' => $batch->items->map(function($item) {
+                return [
+                    'id' => $item->id,
+                    'item_no' => $item->item_no,
+                    'brand' => $item->brand,
+                    'model' => $item->model,
+                    'serial_number' => $item->serial_number ?? '-',
+                    'mac_address' => $item->mac_address ?? '-',
+                    'box_no' => $item->box_no ?? '-',
+                    'repair_status' => $item->repair_status,
+                ];
+            }),
+        ]);
+    }
+
+    public function print(Request $request, $id = null)
+    {
+        $slipId = $id ?? $request->input('slip_id');
+        $batchId = $request->input('batch_id');
+
+        if ($slipId) {
+            $slip = OutgoingSlip::with('items')->findOrFail($slipId);
+            $batch = Batch::where('batch_no', $slip->batch_no)->first();
+            if (!$batch) {
+                $batch = (object)[
+                    'batch_no' => $slip->batch_no,
+                    'company_name' => $slip->company_name,
+                    'brand' => $slip->brand,
+                    'model' => $slip->model,
+                ];
+            }
+            $items = $slip->items;
+            $siNumber = $slip->si_number;
+            $drNumber = $slip->dr_number;
+            $dateReleased = $slip->date_released ? $slip->date_released->format('Y-m-d') : ($slip->date_delivered ? $slip->date_delivered->format('Y-m-d') : now()->format('Y-m-d'));
+            $customerName = $slip->customer_name ?: $slip->company_name;
+
+            return view('print.outgoing_slip', compact('batch', 'items', 'siNumber', 'drNumber', 'dateReleased', 'customerName', 'slip'));
+        }
+
+        $batch = Batch::with('items')->findOrFail($batchId);
+        $items = $batch->items;
+
+        $siNumber = $request->input('si_number');
+        $drNumber = $request->input('dr_number');
+        $dateReleased = $request->input('date_released', now()->format('Y-m-d'));
+        $customerName = $request->input('customer_name', $batch->company_name);
+
+        return view('print.outgoing_slip', compact('batch', 'items', 'siNumber', 'drNumber', 'dateReleased', 'customerName'));
+    }
+
+    public function release(Request $request)
+    {
+        $batchId = $request->input('batch_id');
+        $batch = Batch::with('items')->findOrFail($batchId);
+
+        $dateReleased = $request->input('date_released', now()->format('Y-m-d'));
+        $siNumber = $request->input('si_number');
+        $drNumber = $request->input('dr_number');
+        $customerName = $request->input('customer_name', $batch->company_name);
+
+        DB::transaction(function() use ($batch, $dateReleased, $siNumber, $drNumber, $customerName) {
+            $slipNo = 'ORS-' . date('Ymd') . '-' . str_pad(OutgoingSlip::count() + 1, 3, '0', STR_PAD_LEFT);
+
+            $slip = OutgoingSlip::create([
+                'slip_no' => $slipNo,
+                'batch_no' => $batch->batch_no,
+                'company_name' => $batch->company_name,
+                'customer_name' => $customerName,
+                'date_delivered' => $batch->date_delivered,
+                'date_released' => $dateReleased,
+                'si_number' => $siNumber,
+                'dr_number' => $drNumber,
+                'brand' => $batch->brand,
+                'model' => $batch->model,
+                'total_quantity' => $batch->total_quantity,
+                'status' => 'RELEASED',
+                'encoded_by' => Auth::id(),
+            ]);
+
+            foreach ($batch->items as $item) {
+                $item->update([
+                    'outgoing_slip_id' => $slip->id,
+                    'stock_status' => 'RELEASED',
+                    'si_number' => $siNumber,
+                    'dr_number' => $drNumber,
+                    'customer_name' => $customerName,
+                    'date_outgoing' => $dateReleased,
+                ]);
+            }
+
+            $batch->update([
+                'status' => 'RELEASED',
+                'outgoing_quantity' => $batch->total_quantity,
+                'in_stock_quantity' => 0,
+            ]);
+
+            ActivityLog::log('OUTGOING_RELEASED', "Encoder released Batch {$batch->batch_no} with {$batch->total_quantity} units under Outgoing Slip {$slipNo}.");
+        });
+
+        return back()->with('success', "Outgoing release recorded successfully for Batch {$batch->batch_no}!");
     }
 }

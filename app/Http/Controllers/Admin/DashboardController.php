@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Transmittal;
 use App\Models\Batch;
 use App\Models\InventoryItem;
 use App\Models\OutgoingSlip;
@@ -14,6 +15,7 @@ class DashboardController extends Controller
 {
     public function index()
     {
+        $totalTransmittals = Transmittal::count();
         $totalBatches = Batch::count();
         $totalUnits = InventoryItem::count();
         $inStockUnits = InventoryItem::where('stock_status', 'IN_STOCK')->count();
@@ -23,11 +25,8 @@ class DashboardController extends Controller
         $inProcessCount = InventoryItem::whereIn('repair_status', ['In process', 'PENDING', 'IN_PROCESS'])->count();
         $berCount = InventoryItem::where('repair_status', 'BER')->count();
 
-        // Stock alerts
-        $lowStockBatches = Batch::where('in_stock_quantity', '>', 0)
-            ->where('in_stock_quantity', '<=', 3)
-            ->get();
-
+        // Recent items
+        $recentTransmittals = Transmittal::with('items')->latest()->take(5)->get();
         $recentBatches = Batch::with('items')->latest()->take(5)->get();
         $recentOutgoing = OutgoingSlip::with('items')->latest()->take(5)->get();
         $recentLogs = ActivityLog::latest()->take(8)->get();
@@ -38,6 +37,7 @@ class DashboardController extends Controller
             ->get();
 
         return view('admin.dashboard.index', compact(
+            'totalTransmittals',
             'totalBatches',
             'totalUnits',
             'inStockUnits',
@@ -45,7 +45,7 @@ class DashboardController extends Controller
             'repairedCount',
             'inProcessCount',
             'berCount',
-            'lowStockBatches',
+            'recentTransmittals',
             'recentBatches',
             'recentOutgoing',
             'recentLogs',

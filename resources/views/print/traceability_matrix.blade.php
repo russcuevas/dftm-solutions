@@ -256,29 +256,25 @@
             </tr>
         </thead>
         <tbody>
-            @if($items->count() === 0)
+            @forelse($items as $idx => $item)
+                <tr>
+                    <td class="col-no">{{ $idx + 1 }}</td>
+                    <td style="font-weight: 700; color: #00205B;">{{ $item->technical_diagnostic ?? '' }}</td>
+                    <td style="font-weight: 600;">{{ $item->replace_parts ?? '' }}</td>
+                    <td style="text-align: center; font-weight: 800; color: {{ $item->repair_status === 'BER' ? '#DC2626' : ($item->repair_status === 'In process' ? '#D97706' : '#059669') }};">
+                        {{ strtoupper($item->repair_status ?? 'In process') }}
+                    </td>
+                    <td style="font-family: 'Consolas', monospace; font-weight: 700; color: #00205B;">{{ $item->serial_number ?? '' }}</td>
+                    <td style="font-family: 'Consolas', monospace;">{{ $item->mac_address ?? '' }}</td>
+                    <td style="text-align: center;">{{ $item->box_no ?? '' }}</td>
+                </tr>
+            @empty
                 <tr>
                     <td colspan="7" style="text-align: center; padding: 32px; font-weight: bold; color: #475569;">
                         No data available
                     </td>
                 </tr>
-            @else
-                @php $count = max(20, $items->count()); @endphp
-                @for($i = 0; $i < $count; $i++)
-                    @php $item = $items[$i] ?? null; @endphp
-                    <tr>
-                        <td class="col-no">{{ $i + 1 }}</td>
-                        <td style="font-weight: 700; color: #00205B;">{{ $item?->technical_diagnostic ?? '' }}</td>
-                        <td style="font-weight: 600;">{{ $item?->replace_parts ?? '' }}</td>
-                        <td style="text-align: center; font-weight: 800; color: {{ $item?->repair_status === 'BER' ? '#DC2626' : ($item?->repair_status === 'In process' ? '#D97706' : '#059669') }};">
-                            {{ $item ? strtoupper($item->repair_status ?? 'In process') : '' }}
-                        </td>
-                        <td style="font-family: 'Consolas', monospace; font-weight: 700; color: #00205B;">{{ $item?->serial_number ?? '' }}</td>
-                        <td style="font-family: 'Consolas', monospace;">{{ $item?->mac_address ?? '' }}</td>
-                        <td style="text-align: center;">{{ $item?->box_no ?? '' }}</td>
-                    </tr>
-                @endfor
-            @endif
+            @endforelse
         </tbody>
     </table>
 

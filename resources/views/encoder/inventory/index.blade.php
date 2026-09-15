@@ -46,7 +46,8 @@
                 <tr>
                     <th>Serial Number</th>
                     <th>MAC Address</th>
-                    <th>Batch</th>
+                    <th>Transmittal #</th>
+                    <th>Batch #</th>
                     <th>Brand & Model</th>
                     <th>Box No</th>
                     <th>Diagnostic</th>
@@ -59,7 +60,24 @@
                 <tr>
                     <td><span class="mono" style="font-weight: 700; color: var(--dftm-navy);">{{ $item->serial_number ?? '-' }}</span></td>
                     <td><span class="mono">{{ $item->mac_address ?? '-' }}</span></td>
-                    <td><span class="badge badge-stock">{{ $item->batch->batch_no ?? 'BATCH' }}</span></td>
+                    <td>
+                        @if($item->transmittal)
+                            <a href="{{ route('encoder.incoming.show', $item->transmittal_id) }}" style="font-weight: 600; color: var(--dftm-accent); text-decoration: none;">
+                                {{ $item->transmittal->transmittal_no }}
+                            </a>
+                        @else
+                            <span style="color: var(--dftm-slate-light);">-</span>
+                        @endif
+                    </td>
+                    <td>
+                        @if($item->batch)
+                            <a href="{{ route('encoder.traceability.index', ['batch_id' => $item->batch_id]) }}" style="font-weight: 600; color: var(--dftm-navy); text-decoration: none;">
+                                {{ $item->batch->batch_no }}
+                            </a>
+                        @else
+                            <span class="badge" style="background: #F1F5F9; color: #64748B;">Unbatched</span>
+                        @endif
+                    </td>
                     <td><strong>{{ $item->brand }}</strong> {{ $item->model }}</td>
                     <td>{{ $item->box_no ?? '-' }}</td>
                     <td><small>{{ $item->technical_diagnostic ?? '-' }}</small></td>
@@ -76,7 +94,7 @@
                 </tr>
                 @empty
                 <tr>
-                    <td colspan="8" style="text-align: center; color: var(--dftm-slate); padding: 32px;">No inventory items found.</td>
+                    <td colspan="9" style="text-align: center; color: var(--dftm-slate); padding: 32px;">No inventory items found.</td>
                 </tr>
                 @endforelse
             </tbody>

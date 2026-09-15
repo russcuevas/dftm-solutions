@@ -35,6 +35,14 @@
                         <i class="bi bi-box-seam-fill"></i> CONSUMABLE
                     </a>
                 </div>
+            @elseif (auth()->user() && auth()->user()->isClient())
+                <div style="margin: 0 16px 16px; padding: 10px 14px; background: rgba(168, 85, 247, 0.15); border: 1px solid rgba(168, 85, 247, 0.3); border-radius: 8px; display: flex; align-items: center; gap: 10px;">
+                    <i class="bi bi-shield-check" style="color: #C084FC; font-size: 1.2rem;"></i>
+                    <div style="overflow: hidden;">
+                        <div style="font-size: 0.68rem; color: #CBD5E1; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px;">Customer Portal</div>
+                        <strong style="color: #FFFFFF; font-size: 0.82rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;">{{ auth()->user()->company_name ?? 'Client Account' }}</strong>
+                    </div>
+                </div>
             @endif
 
             <ul class="sidebar-menu">
@@ -53,21 +61,21 @@
                             <a href="{{ route('admin.incoming.index') }}"
                                 class="menu-link {{ request()->routeIs('admin.incoming.*') ? 'active' : '' }}">
                                 <span class="menu-icon"><i class="bi bi-box-arrow-in-down"></i></span>
-                                <span>Incoming Slips</span>
-                            </a>
-                        </li>
-                        <li class="menu-item">
-                            <a href="{{ route('admin.outgoing.index') }}"
-                                class="menu-link {{ request()->routeIs('admin.outgoing.*') ? 'active' : '' }}">
-                                <span class="menu-icon"><i class="bi bi-box-arrow-up-right"></i></span>
-                                <span>Outgoing Slips</span>
+                                <span>Incoming Transmittals</span>
                             </a>
                         </li>
                         <li class="menu-item">
                             <a href="{{ route('admin.traceability.index') }}"
                                 class="menu-link {{ request()->routeIs('admin.traceability.*') ? 'active' : '' }}">
                                 <span class="menu-icon"><i class="bi bi-cpu-fill"></i></span>
-                                <span>Traceability Matrix</span>
+                                <span>Traceability (Batches)</span>
+                            </a>
+                        </li>
+                        <li class="menu-item">
+                            <a href="{{ route('admin.outgoing.index') }}"
+                                class="menu-link {{ request()->routeIs('admin.outgoing.*') ? 'active' : '' }}">
+                                <span class="menu-icon"><i class="bi bi-printer-fill"></i></span>
+                                <span>Outgoing Reports</span>
                             </a>
                         </li>
                         <li class="menu-item">
@@ -114,8 +122,48 @@
                     <li class="menu-item">
                         <a href="{{ route('admin.users.index') }}"
                             class="menu-link {{ request()->routeIs('admin.users.*') ? 'active' : '' }}">
-                            <span class="menu-icon"><i class="bi bi-people-fill"></i></span>
+                            <span class="menu-icon"><i class="bi bi-person-gear"></i></span>
                             <span>User Accounts</span>
+                        </a>
+                    </li>
+                    <li class="menu-item">
+                        <a href="{{ route('admin.clients.index') }}"
+                            class="menu-link {{ request()->routeIs('admin.clients.*') ? 'active' : '' }}">
+                            <span class="menu-icon"><i class="bi bi-buildings"></i></span>
+                            <span>Client Accounts</span>
+                        </a>
+                    </li>
+                @elseif (auth()->user() && auth()->user()->isClient())
+                    <!-- Client Portal Navigation (Read-Only Tracking & Reports) -->
+                    <li class="menu-heading">Customer Portal</li>
+                    <li class="menu-item">
+                        <a href="{{ route('client.dashboard') }}"
+                            class="menu-link {{ request()->routeIs('client.dashboard') ? 'active' : '' }}">
+                            <span class="menu-icon"><i class="bi bi-search"></i></span>
+                            <span>Dashboard & Tracker</span>
+                        </a>
+                    </li>
+
+                    <li class="menu-heading">My Company Records</li>
+                    <li class="menu-item">
+                        <a href="{{ route('client.incoming.index') }}"
+                            class="menu-link {{ request()->routeIs('client.incoming.*') ? 'active' : '' }}">
+                            <span class="menu-icon"><i class="bi bi-box-arrow-in-down"></i></span>
+                            <span>Incoming Transmittals</span>
+                        </a>
+                    </li>
+                    <li class="menu-item">
+                        <a href="{{ route('client.traceability.index') }}"
+                            class="menu-link {{ request()->routeIs('client.traceability.*') ? 'active' : '' }}">
+                            <span class="menu-icon"><i class="bi bi-diagram-3-fill"></i></span>
+                            <span>Traceability Batches</span>
+                        </a>
+                    </li>
+                    <li class="menu-item">
+                        <a href="{{ route('client.outgoing.index') }}"
+                            class="menu-link {{ request()->routeIs('client.outgoing.*') ? 'active' : '' }}">
+                            <span class="menu-icon"><i class="bi bi-printer-fill"></i></span>
+                            <span>Outgoing Reports</span>
                         </a>
                     </li>
                 @else
@@ -129,26 +177,26 @@
                         </a>
                     </li>
 
-                    <li class="menu-heading">Encoding Slips</li>
+                    <li class="menu-heading">Encoding Flow</li>
                     <li class="menu-item">
                         <a href="{{ route('encoder.incoming.index') }}"
                             class="menu-link {{ request()->routeIs('encoder.incoming.*') ? 'active' : '' }}">
                             <span class="menu-icon"><i class="bi bi-input-cursor-text"></i></span>
-                            <span>Encode Incoming</span>
-                        </a>
-                    </li>
-                    <li class="menu-item">
-                        <a href="{{ route('encoder.outgoing.index') }}"
-                            class="menu-link {{ request()->routeIs('encoder.outgoing.*') ? 'active' : '' }}">
-                            <span class="menu-icon"><i class="bi bi-send-check"></i></span>
-                            <span>Process Outgoing</span>
+                            <span>Incoming Transmittals</span>
                         </a>
                     </li>
                     <li class="menu-item">
                         <a href="{{ route('encoder.traceability.index') }}"
                             class="menu-link {{ request()->routeIs('encoder.traceability.*') ? 'active' : '' }}">
                             <span class="menu-icon"><i class="bi bi-tools"></i></span>
-                            <span>Repair Matrix</span>
+                            <span>Traceability Batches</span>
+                        </a>
+                    </li>
+                    <li class="menu-item">
+                        <a href="{{ route('encoder.outgoing.index') }}"
+                            class="menu-link {{ request()->routeIs('encoder.outgoing.*') ? 'active' : '' }}">
+                            <span class="menu-icon"><i class="bi bi-printer-fill"></i></span>
+                            <span>Outgoing Reports</span>
                         </a>
                     </li>
                     <li class="menu-item">
@@ -156,6 +204,13 @@
                             class="menu-link {{ request()->routeIs('encoder.inventory.*') ? 'active' : '' }}">
                             <span class="menu-icon"><i class="bi bi-archive-fill"></i></span>
                             <span>Stock Status</span>
+                        </a>
+                    </li>
+                    <li class="menu-item">
+                        <a href="{{ route('encoder.clients.index') }}"
+                            class="menu-link {{ request()->routeIs('encoder.clients.*') ? 'active' : '' }}">
+                            <span class="menu-icon"><i class="bi bi-buildings"></i></span>
+                            <span>Clients & Companies</span>
                         </a>
                     </li>
                 @endif
@@ -170,8 +225,8 @@
                     <div class="user-details">
                         <span class="user-name">{{ auth()->user()->name ?? 'User' }}</span>
                         <span
-                            class="user-role-badge {{ auth()->user() && auth()->user()->isAdmin() ? 'role-admin' : 'role-encoder' }}">
-                            {{ auth()->user()->role ?? 'Encoder' }}
+                            class="user-role-badge {{ auth()->user() && auth()->user()->isAdmin() ? 'role-admin' : (auth()->user() && auth()->user()->isClient() ? 'role-client' : 'role-encoder') }}">
+                            {{ auth()->user() && auth()->user()->isClient() ? (auth()->user()->company_name ?? 'CLIENT') : strtoupper(auth()->user()->role ?? 'ENCODER') }}
                         </span>
                     </div>
                 </div>

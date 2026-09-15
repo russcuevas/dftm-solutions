@@ -5,216 +5,211 @@ namespace App\Http\Controllers\Encoder;
 use App\Http\Controllers\Controller;
 use App\Models\InventoryItem;
 use App\Models\Batch;
+use App\Models\Transmittal;
 use App\Models\ActivityLog;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
 
 class TraceabilityController extends Controller
 {
     public function index(Request $request)
     {
-        $outgoingSlips = \App\Models\OutgoingSlip::with('items')->latest()->get();
-        $batches = Batch::whereHas('items', function($q) {
-            $q->whereNotNull('outgoing_slip_id');
-        })->latest()->get();
+        $batches = Batch::with('items')->latest()->get();
 
-        $activeSlipId = $request->input('outgoing_slip_id');
         $activeBatchId = $request->input('batch_id');
-        $tab = $request->input('tab');
-        $openItemId = $request->input('open_item_id');
-        $openItem = null;
+        $statusFilter = $request->input('status');
+        $brandFilter = $request->input('brand');
 
-        if (!empty($openItemId)) {
-            $openItem = InventoryItem::with(['outgoingSlip', 'batch', 'encoder'])->find($openItemId);
-            if ($openItem && empty($activeSlipId) && !empty($openItem->outgoing_slip_id)) {
-                $activeSlipId = $openItem->outgoing_slip_id;
-            }
-            // Remove open_item_id from request so no Blade helpers or tab links ever inherit it
-            $request->query->remove('open_item_id');
-            $request->request->remove('open_item_id');
+        if (!$activeBatchId && $batches->isNotEmpty()) {
+            $activeBatchId = $batches->first()->id;
         }
 
-        $query = InventoryItem::with(['outgoingSlip', 'batch', 'encoder'])
-            ->whereNotNull('outgoing_slip_id')
+        $query = InventoryItem::with(['batch', 'transmittal', 'encoder'])
             ->orderBy('item_no', 'asc')
             ->orderBy('id', 'asc');
 
-        $hasSelection = $request->filled('outgoing_slip_id') 
-            || $request->filled('batch_id') 
-            || $request->filled('tab') 
-            || $request->filled('status') 
-            || $request->filled('brand')
-            || !empty($openItem);
-
-        if (!$hasSelection) {
-            $query->whereRaw('1 = 0');
-        }
-
-        if (!empty($activeSlipId) && $activeSlipId !== 'all') {
-            $query->where('outgoing_slip_id', $activeSlipId);
-        } elseif (!empty($activeBatchId) && $activeBatchId !== 'all') {
+        if (!empty($activeBatchId) && $activeBatchId !== 'all') {
             $query->where('batch_id', $activeBatchId);
+        } else {
+            $query->whereNotNull('batch_id');
         }
 
-        if ($tab) {
-            if (str_ends_with($tab, '-BER')) {
-                $brandName = substr($tab, 0, -4);
-                $query->where('brand', 'like', $brandName)->where('repair_status', 'BER');
-            } elseif (str_ends_with($tab, '-INPROCESS')) {
-                $brandName = substr($tab, 0, -10);
-                $query->where('brand', 'like', $brandName)->where(function($q) {
-                    $q->where('repair_status', 'In process')
-                      ->orWhere('repair_status', 'IN_PROCESS')
-                      ->orWhere('repair_status', 'PENDING')
-                      ->orWhereNull('repair_status');
-                });
-            } elseif (str_ends_with($tab, '-REPAIRED')) {
-                $brandName = substr($tab, 0, -9);
-                $query->where('brand', 'like', $brandName)->where('repair_status', 'Repaired');
-            } else {
-                $query->where('brand', 'like', $tab);
-            }
-        }
-
-        if ($request->filled('status')) {
-            $status = $request->status;
-            if ($status === 'In process' || $status === 'IN_PROCESS') {
+        if ($statusFilter) {
+            if ($statusFilter === 'In process' || $statusFilter === 'IN_PROCESS') {
                 $query->where(function($q) {
                     $q->whereIn('repair_status', ['In process', 'PENDING', 'IN_PROCESS'])
                       ->orWhereNull('repair_status');
                 });
             } else {
-                $query->where('repair_status', $status);
+                $query->where('repair_status', $statusFilter);
             }
         }
 
-        if ($request->filled('brand')) {
-            $query->where('brand', $request->brand);
+        if ($brandFilter) {
+            $query->where('brand', $brandFilter);
         }
 
-        $items = $query->paginate(50)->appends($request->except('open_item_id'));
+        $items = $query->paginate(50)->withQueryString();
 
-        $brandQuery = InventoryItem::whereNotNull('outgoing_slip_id')
-            ->whereNotNull('brand')
-            ->where('brand', '!=', '');
+        $selectedBatch = !empty($activeBatchId) && $activeBatchId !== 'all' 
+            ? Batch::with('items')->find($activeBatchId) 
+            : null;
 
-        if (!empty($activeSlipId) && $activeSlipId !== 'all') {
-            $brandQuery->where('outgoing_slip_id', $activeSlipId);
-        } elseif (!empty($activeBatchId) && $activeBatchId !== 'all') {
-            $brandQuery->where('batch_id', $activeBatchId);
-        }
-
-        $brands = $brandQuery->distinct()
-            ->pluck('brand')
-            ->map(fn($b) => strtoupper(trim($b)))
-            ->unique()
-            ->values();
-
-        $hasBatchSelection = (!empty($activeSlipId) && $activeSlipId !== 'all') 
-            || (!empty($activeBatchId) && $activeBatchId !== 'all') 
-            || !empty($tab);
-
-        if (!$hasBatchSelection) {
-            $repairedCount = 0;
-            $inProcessCount = 0;
-            $berCount = 0;
+        $metricsQuery = InventoryItem::query();
+        if ($selectedBatch) {
+            $metricsQuery->where('batch_id', $selectedBatch->id);
         } else {
-            $metricsQuery = InventoryItem::whereNotNull('outgoing_slip_id');
-            if (!empty($activeSlipId) && $activeSlipId !== 'all') {
-                $metricsQuery->where('outgoing_slip_id', $activeSlipId);
-            } elseif (!empty($activeBatchId) && $activeBatchId !== 'all') {
-                $metricsQuery->where('batch_id', $activeBatchId);
-            }
-
-            $repairedCount = (clone $metricsQuery)->where('repair_status', 'Repaired')->count();
-            $inProcessCount = (clone $metricsQuery)->where(function($q) {
-                $q->whereIn('repair_status', ['In process', 'PENDING', 'IN_PROCESS'])
-                  ->orWhereNull('repair_status');
-            })->count();
-            $berCount = (clone $metricsQuery)->where('repair_status', 'BER')->count();
+            $metricsQuery->whereNotNull('batch_id');
         }
 
-        $firstItem = $items->first();
-        $selectedSlip = (!empty($activeSlipId) && $activeSlipId !== 'all') 
-            ? \App\Models\OutgoingSlip::find($activeSlipId) 
-            : ($firstItem?->outgoingSlip ?? null);
+        $repairedCount = (clone $metricsQuery)->where('repair_status', 'Repaired')->count();
+        $inProcessCount = (clone $metricsQuery)->where(function($q) {
+            $q->whereIn('repair_status', ['In process', 'PENDING', 'IN_PROCESS'])
+              ->orWhereNull('repair_status');
+        })->count();
+        $berCount = (clone $metricsQuery)->where('repair_status', 'BER')->count();
 
-        $selectedBatch = $selectedSlip ? Batch::where('batch_no', $selectedSlip->batch_no)->first() : ($firstItem?->batch);
+        $unbatchedUnitsCount = InventoryItem::whereNull('batch_id')->count();
 
         return view('encoder.traceability.index', compact(
             'items',
             'batches',
-            'outgoingSlips',
-            'brands',
+            'selectedBatch',
+            'activeBatchId',
             'repairedCount',
             'inProcessCount',
             'berCount',
-            'selectedBatch',
-            'selectedSlip',
-            'firstItem',
-            'activeSlipId',
-            'activeBatchId',
-            'tab',
-            'openItem'
+            'unbatchedUnitsCount'
         ));
     }
 
-    public function lookup(Request $request)
+    public function createBatch(Request $request)
     {
-        $code = trim($request->input('code') ?? $request->input('query') ?? '');
-        if (empty($code)) {
-            return response()->json([
-                'found' => false,
-                'message' => 'Please enter or scan a Serial Number or MAC Address.'
-            ], 400);
+        $nextBatchNo = 'BATCH ' . (Batch::count() + 1);
+
+        $availableItems = InventoryItem::with('transmittal')
+            ->whereNull('batch_id')
+            ->orderBy('transmittal_id', 'desc')
+            ->orderBy('item_no', 'asc')
+            ->get();
+
+        $transmittals = Transmittal::whereHas('items', function($q) {
+            $q->whereNull('batch_id');
+        })->latest()->get();
+
+        return view('encoder.traceability.create_batch', compact('nextBatchNo', 'availableItems', 'transmittals'));
+    }
+
+    public function storeBatch(Request $request)
+    {
+        $selectedItemIds = $request->input('selected_items', []);
+
+        if (empty($selectedItemIds) || !is_array($selectedItemIds)) {
+            return back()->withInput()->with('error', 'Please select at least one unit to include in this Traceability Batch.');
         }
 
-        $cleanCode = preg_replace('/[^A-Za-z0-9]/', '', $code);
+        $batch = DB::transaction(function () use ($request, $selectedItemIds) {
+            $items = InventoryItem::whereIn('id', $selectedItemIds)->get();
+            $firstItem = $items->first();
 
-        // Search exact match or cleaned alphanumeric match
-        $item = InventoryItem::with(['outgoingSlip', 'batch', 'encoder'])
-            ->where(function($q) use ($code, $cleanCode) {
-                $q->where('serial_number', $code)
-                  ->orWhere('mac_address', $code);
-                if (!empty($cleanCode)) {
-                    $q->orWhereRaw("REPLACE(REPLACE(REPLACE(serial_number, ':', ''), '-', ''), ' ', '') = ?", [$cleanCode])
-                      ->orWhereRaw("REPLACE(REPLACE(REPLACE(mac_address, ':', ''), '-', ''), ' ', '') = ?", [$cleanCode]);
+            $batchNo = $request->input('batch_no') ?: ('BATCH ' . (Batch::count() + 1));
+            $companyName = $request->input('company_name') ?: ($firstItem?->company_name ?? 'DFTM DIGITAL SOLUTIONS');
+            $brand = $request->input('brand') ?: ($firstItem?->brand ?? null);
+            $model = $request->input('model') ?: ($firstItem?->model ?? null);
+            $dateDelivered = $request->input('date_delivered', now()->format('Y-m-d'));
+            $defaultStatus = $request->input('status') ?: 'In process';
+
+            $batch = Batch::create([
+                'batch_no' => $batchNo,
+                'company_name' => $companyName,
+                'date_delivered' => $dateDelivered,
+                'brand' => $brand,
+                'model' => $model,
+                'total_quantity' => count($selectedItemIds),
+                'in_stock_quantity' => count($selectedItemIds),
+                'status' => $defaultStatus,
+                'notes' => $request->input('notes'),
+                'encoded_by' => Auth::id(),
+            ]);
+
+            $oldBatchIds = $items->pluck('batch_id')->filter()->unique();
+
+            // Assign batch to items
+            foreach ($items as $idx => $item) {
+                $item->update([
+                    'batch_id' => $batch->id,
+                    'repair_status' => $item->repair_status ?: $defaultStatus,
+                    'stock_status' => 'IN_STOCK',
+                ]);
+            }
+
+            $batch->recalculateQuantities();
+
+            foreach ($oldBatchIds as $oldId) {
+                if ($oldId != $batch->id) {
+                    Batch::find($oldId)?->recalculateQuantities();
                 }
-            })
-            ->first();
+            }
 
-        // Fallback fuzzy search if not found
-        if (!$item) {
-            $item = InventoryItem::with(['outgoingSlip', 'batch', 'encoder'])
-                ->where(function($q) use ($code) {
-                    $q->where('serial_number', 'LIKE', "%{$code}%")
-                      ->orWhere('mac_address', 'LIKE', "%{$code}%");
-                })
-                ->first();
+            ActivityLog::log('TRACEABILITY_BATCH_CREATED', "Encoder created Traceability Batch {$batch->batch_no} with {$batch->total_quantity} units.");
+
+            return $batch;
+        });
+
+        return redirect()->route('encoder.traceability.index', ['batch_id' => $batch->id])
+            ->with('success', "Traceability Batch {$batch->batch_no} created successfully with {$batch->total_quantity} units!");
+    }
+
+    public function bulkUpdate(Request $request)
+    {
+        $itemIds = $request->input('item_ids', []);
+        if (empty($itemIds) || !is_array($itemIds)) {
+            return response()->json(['success' => false, 'message' => 'No items selected.'], 400);
         }
 
-        if (!$item) {
-            return response()->json([
-                'found' => false,
-                'message' => "No unit found with Serial Number or MAC: \"{$code}\""
-            ], 404);
+        $updates = [];
+        if ($request->filled('status')) {
+            $updates['repair_status'] = trim($request->input('status'));
+        }
+        if ($request->filled('technical_diagnostic')) {
+            $updates['technical_diagnostic'] = trim($request->input('technical_diagnostic'));
+        }
+        if ($request->filled('replace_parts')) {
+            $updates['replace_parts'] = trim($request->input('replace_parts'));
         }
 
-        $statusParam = match(strtoupper(str_replace(' ', '_', $item->repair_status ?? 'IN_PROCESS'))) {
-            'REPAIRED' => 'Repaired',
-            'BER' => 'BER',
-            default => 'In process'
-        };
+        if (empty($updates)) {
+            return response()->json(['success' => false, 'message' => 'No update fields provided.'], 400);
+        }
+
+        InventoryItem::whereIn('id', $itemIds)->update($updates);
+
+        ActivityLog::log('TRACEABILITY_BULK_UPDATED', "Encoder bulk updated " . count($itemIds) . " items in Traceability.");
 
         return response()->json([
-            'found' => true,
+            'success' => true,
+            'message' => "Successfully updated " . count($itemIds) . " items.",
+            'updated_fields' => $updates,
+        ]);
+    }
+
+    public function saveItem(Request $request)
+    {
+        $itemId = $request->input('item_id');
+        $item = InventoryItem::findOrFail($itemId);
+
+        $item->update([
+            'technical_diagnostic' => $request->input('technical_diagnostic', $item->technical_diagnostic),
+            'replace_parts' => $request->input('replace_parts', $item->replace_parts),
+            'repair_status' => $request->input('repair_status', $item->repair_status),
+            'box_no' => $request->input('box_no', $item->box_no),
+            'notes' => $request->input('notes', $item->notes),
+        ]);
+
+        return response()->json([
+            'success' => true,
             'item' => $item,
-            'outgoing_slip_id' => $item->outgoing_slip_id,
-            'batch_id' => $item->batch_id,
-            'batch_no' => $item->batch?->batch_no ?? $item->outgoingSlip?->batch_no,
-            'slip_no' => $item->outgoingSlip?->slip_no,
-            'has_outgoing_slip' => !empty($item->outgoing_slip_id),
-            'status_param' => $statusParam,
-            'message' => "Unit found: {$item->serial_number}"
         ]);
     }
 
@@ -230,34 +225,84 @@ class TraceabilityController extends Controller
             'notes' => $request->input('notes', $item->notes),
         ]);
 
-        ActivityLog::log('TRACEABILITY_UPDATED', "Encoder updated repair traceability for item SN: {$item->serial_number}.");
-
-        $returnUrl = url()->previous();
-        if ($returnUrl) {
-            $parsed = parse_url($returnUrl);
-            if (isset($parsed['query'])) {
-                parse_str($parsed['query'], $queryParams);
-                unset($queryParams['open_item_id']);
-                $newQuery = http_build_query($queryParams);
-                $cleanReturnUrl = ($parsed['scheme'] ?? 'http') . '://' . ($parsed['host'] ?? 'localhost') . (isset($parsed['port']) ? ':' . $parsed['port'] : '') . ($parsed['path'] ?? '') . ($newQuery ? '?' . $newQuery : '');
-                return redirect($cleanReturnUrl)->with('success', "Traceability record for SN: {$item->serial_number} updated!");
-            }
-        }
+        ActivityLog::log('TRACEABILITY_UPDATED', "Encoder updated repair traceability for SN: {$item->serial_number}.");
 
         return back()->with('success', "Traceability record for SN: {$item->serial_number} updated!");
     }
 
+    public function destroyBatch($id)
+    {
+        $batch = Batch::findOrFail($id);
+        $batchNo = $batch->batch_no;
+
+        InventoryItem::where('batch_id', $batch->id)->update([
+            'batch_id' => null,
+        ]);
+
+        $batch->delete();
+
+        ActivityLog::log('TRACEABILITY_BATCH_DELETED', "Encoder deleted Batch {$batchNo}. Units returned to unbatched pool.");
+
+        return redirect()->route('encoder.traceability.index')->with('success', "Batch {$batchNo} deleted. All units returned to incoming pool.");
+    }
+
+    public function lookup(Request $request)
+    {
+        $code = trim($request->input('code') ?? $request->input('query') ?? '');
+        if (empty($code)) {
+            return response()->json(['found' => false, 'message' => 'Please enter or scan a Serial Number or MAC Address.'], 400);
+        }
+
+        $cleanCode = preg_replace('/[^A-Za-z0-9]/', '', $code);
+
+        $item = InventoryItem::with(['batch', 'transmittal', 'encoder'])
+            ->where(function($q) use ($code, $cleanCode) {
+                $q->where('serial_number', $code)
+                  ->orWhere('mac_address', $code);
+                if (!empty($cleanCode)) {
+                    $q->orWhereRaw("REPLACE(REPLACE(REPLACE(serial_number, ':', ''), '-', ''), ' ', '') = ?", [$cleanCode])
+                      ->orWhereRaw("REPLACE(REPLACE(REPLACE(mac_address, ':', ''), '-', ''), ' ', '') = ?", [$cleanCode]);
+                }
+            })
+            ->first();
+
+        if (!$item) {
+            $item = InventoryItem::with(['batch', 'transmittal', 'encoder'])
+                ->where(function($q) use ($code) {
+                    $q->where('serial_number', 'LIKE', "%{$code}%")
+                      ->orWhere('mac_address', 'LIKE', "%{$code}%");
+                })
+                ->first();
+        }
+
+        if (!$item) {
+            return response()->json(['found' => false, 'message' => "No unit found with Serial Number or MAC: \"{$code}\""], 404);
+        }
+
+        return response()->json([
+            'found' => true,
+            'item' => $item,
+            'batch_id' => $item->batch_id,
+            'batch_no' => $item->batch?->batch_no ?? 'Unbatched',
+            'transmittal_no' => $item->transmittal?->transmittal_no ?? 'N/A',
+            'message' => "Unit found: {$item->serial_number}"
+        ]);
+    }
+
     public function print(Request $request)
     {
-        $query = InventoryItem::with(['outgoingSlip', 'batch'])
-            ->whereNotNull('outgoing_slip_id')
+        $batchId = $request->input('batch_id');
+        $batch = null;
+
+        $query = InventoryItem::with(['batch', 'transmittal'])
             ->orderBy('item_no', 'asc')
             ->orderBy('id', 'asc');
 
-        if ($request->filled('outgoing_slip_id')) {
-            $query->where('outgoing_slip_id', $request->outgoing_slip_id);
-        } elseif ($request->filled('batch_id')) {
-            $query->where('batch_id', $request->batch_id);
+        if ($batchId && $batchId !== 'all') {
+            $batch = Batch::find($batchId);
+            $query->where('batch_id', $batchId);
+        } else {
+            $query->whereNotNull('batch_id');
         }
 
         if ($request->filled('status')) {
@@ -272,16 +317,9 @@ class TraceabilityController extends Controller
             }
         }
 
-        if ($request->filled('brand')) {
-            $query->where('brand', $request->brand);
-        }
-
         $items = $query->get();
-        $filterStatus = $request->input('status', 'ALL');
-        $firstItem = $items->first();
-        $selectedSlip = $request->filled('outgoing_slip_id') ? \App\Models\OutgoingSlip::find($request->outgoing_slip_id) : ($firstItem?->outgoingSlip);
-        $selectedBatch = $selectedSlip ? Batch::where('batch_no', $selectedSlip->batch_no)->first() : ($firstItem?->batch);
+        $selectedBatch = $batch ?: ($items->first()?->batch);
 
-        return view('print.traceability_matrix', compact('items', 'filterStatus', 'selectedBatch', 'selectedSlip'));
+        return view('print.traceability_matrix', compact('items', 'selectedBatch'));
     }
 }

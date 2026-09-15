@@ -13,9 +13,15 @@ class AuthController extends Controller
     public function showLogin()
     {
         if (Auth::check()) {
-            return Auth::user()->isAdmin()
-                ? redirect()->route('admin.dashboard')
-                : redirect()->route('encoder.dashboard');
+            /** @var \App\Models\User $user */
+            $user = Auth::user();
+            if ($user->isAdmin()) {
+                return redirect()->route('admin.dashboard');
+            }
+            if ($user->isClient()) {
+                return redirect()->route('client.dashboard');
+            }
+            return redirect()->route('encoder.dashboard');
         }
 
         return view('auth.login');
@@ -37,12 +43,16 @@ class AuthController extends Controller
 
         if (Auth::attempt($credentials, $remember)) {
             $request->session()->regenerate();
+            /** @var \App\Models\User $user */
             $user = Auth::user();
 
             ActivityLog::log('USER_LOGIN', "User {$user->name} ({$user->role}) logged in.");
 
             if ($user->isAdmin()) {
                 return redirect()->intended(route('admin.dashboard'))->with('success', "Welcome back, {$user->name}!");
+            }
+            if ($user->isClient()) {
+                return redirect()->intended(route('client.dashboard'))->with('success', "Welcome to Client Portal, {$user->name}!");
             }
             return redirect()->intended(route('encoder.dashboard'))->with('success', "Welcome back, {$user->name}!");
         }

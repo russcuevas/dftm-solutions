@@ -20,6 +20,7 @@ class User extends Authenticatable
      */
     protected $fillable = [
         'name',
+        'company_name',
         'username',
         'email',
         'role',
@@ -59,5 +60,10 @@ class User extends Authenticatable
     public function isEncoder(): bool
     {
         return strtolower($this->role ?? '') === 'encoder';
+    }
+
+    public function isClient(): bool
+    {
+        return in_array(strtolower($this->role ?? ''), ['client', 'customer']);
     }
 }
