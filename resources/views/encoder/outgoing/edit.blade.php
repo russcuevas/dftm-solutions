@@ -156,36 +156,69 @@
 
                 <!-- Batch Filter & Action Bar -->
                 <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px;">
-                    <div style="display: flex; align-items: center; gap: 10px; flex: 1; min-width: 280px;">
-                        <label style="font-weight: 700; font-size: 0.85rem; color: var(--dftm-navy); white-space: nowrap;">
-                            <i class="bi bi-filter-square-fill" style="color: var(--dftm-accent);"></i> Batch Filter:
-                        </label>
-                        <select id="batchFilterSelector" class="form-select" style="max-width: 400px; font-weight: 600; border-color: var(--dftm-accent); background-color: #FFFFFF;">
-                            <option value="all" data-count="{{ $availableItems->count() }}">
-                                -- Show All Batches ({{ $availableItems->count() }} Available Units) --
-                            </option>
-                            @foreach($batches as $b)
-                                @php
-                                    $batchItemsCount = $availableItems->where('batch_id', $b->id)->count();
-                                @endphp
-                                @if($batchItemsCount > 0)
-                                    <option value="{{ $b->id }}" data-count="{{ $batchItemsCount }}">
-                                        {{ $b->batch_no }} &bull; {{ $b->brand }} {{ $b->model }} ({{ $batchItemsCount }} Units Available)
-                                    </option>
+                    <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px; flex: 1; min-width: 280px;">
+                        <!-- Company Filter -->
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <label style="font-weight: 700; font-size: 0.85rem; color: var(--dftm-navy); white-space: nowrap;">
+                                <i class="bi bi-building" style="color: var(--dftm-accent);"></i> Company:
+                            </label>
+                            <select id="outgoingCompanyFilterSelector" class="form-select form-select-sm" style="min-width: 180px; max-width: 240px; font-weight: 600;">
+                                <option value="all">-- All Companies --</option>
+                                @if(isset($companies))
+                                    @foreach($companies as $comp)
+                                        <option value="{{ $comp }}">{{ $comp }}</option>
+                                    @endforeach
                                 @endif
-                            @endforeach
-                        </select>
+                            </select>
+                        </div>
+
+                        <!-- Batch Filter -->
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <label style="font-weight: 700; font-size: 0.85rem; color: var(--dftm-navy); white-space: nowrap;">
+                                <i class="bi bi-filter-square-fill" style="color: var(--dftm-accent);"></i> Batch Filter:
+                            </label>
+                            <select id="batchFilterSelector" class="form-select form-select-sm" style="min-width: 260px; max-width: 420px; font-weight: 600; border-color: var(--dftm-accent); background-color: #FFFFFF;">
+                                <option value="all" data-company="all" data-count="{{ $availableItems->count() }}">
+                                    -- Show All Batches ({{ $availableItems->count() }} Available Units) --
+                                </option>
+                                @php
+                                    $batchesGrouped = $batches->groupBy(function($b) {
+                                        return $b->company_name ?: ($b->items->first()?->company_name ?: ($b->items->first()?->transmittal?->company_name ?: 'DFTM DIGITAL SOLUTIONS'));
+                                    });
+                                @endphp
+                                @foreach($batchesGrouped as $cName => $cBatches)
+                                    <optgroup label="🏢 {{ $cName }}">
+                                        @foreach($cBatches as $b)
+                                            @php
+                                                $batchItemsCount = $availableItems->where('batch_id', $b->id)->count();
+                                                $cDisplay = $b->company_name ?: ($b->items->first()?->company_name ?: ($b->items->first()?->transmittal?->company_name ?: 'DFTM'));
+                                            @endphp
+                                            @if($batchItemsCount > 0)
+                                                <option value="{{ $b->id }}" 
+                                                        data-batch-no="{{ $b->batch_no }}" 
+                                                        data-brand="{{ $b->brand }}" 
+                                                        data-model="{{ $b->model }}" 
+                                                        data-company="{{ $cDisplay }}" 
+                                                        data-count="{{ $batchItemsCount }}">
+                                                    {{ $b->batch_no }} &bull; {{ $cDisplay }} &bull; {{ $b->brand }} {{ $b->model }} ({{ $batchItemsCount }} Units Available)
+                                                </option>
+                                            @endif
+                                        @endforeach
+                                    </optgroup>
+                                @endforeach
+                            </select>
+                        </div>
                     </div>
 
                     <div style="display: flex; align-items: center; gap: 8px;">
                         <button type="button" id="btnSelectAllBatch" class="btn btn-outline btn-sm" style="font-weight: 600;" title="Select all units visible in currently filtered batch">
-                            <i class="bi bi-check-all"></i> Select All in Batch
+                            <i class="bi bi-check-all"></i> Select All Visible
                         </button>
                         <button type="button" id="btnDeselectAll" class="btn btn-outline btn-sm" style="color: var(--dftm-slate);" title="Clear selection">
                             <i class="bi bi-x-circle"></i> Clear
                         </button>
-                        <div style="width: 220px;">
-                            <input type="text" class="form-control" placeholder="Search serial/MAC..." data-table-search="availableItemsTable">
+                        <div style="width: 180px;">
+                            <input type="text" id="quickOutgoingSearch" class="form-control form-control-sm" placeholder="Search serial/MAC...">
                         </div>
                     </div>
                 </div>
@@ -199,6 +232,7 @@
                                 </th>
                                 <th>SERIAL NUMBER</th>
                                 <th>MAC ADDRESS</th>
+                                <th>COMPANY</th>
                                 <th>BATCH</th>
                                 <th>BRAND & MODEL</th>
                                 <th>BOX NO.</th>
@@ -206,25 +240,33 @@
                         </thead>
                         <tbody>
                             @forelse($availableItems as $availItem)
-                            <tr data-batch-id="{{ $availItem->batch_id }}">
+                            @php
+                                $itemComp = $availItem->company_name ?: ($availItem->transmittal?->company_name ?? ($availItem->batch?->company_name ?? 'DFTM DIGITAL SOLUTIONS'));
+                            @endphp
+                            <tr class="outgoing-unit-row" data-batch-id="{{ $availItem->batch_id }}" data-company="{{ strtolower(trim($itemComp)) }}">
                                 <td style="text-align: center;">
                                     <input type="checkbox" name="new_selected_items[]" value="{{ $availItem->id }}" 
-                                           class="item-select-checkbox" 
+                                           class="item-select-checkbox unit-checkbox" 
                                            data-batch-id="{{ $availItem->batch_id }}"
                                            data-brand="{{ $availItem->brand }}" 
                                            data-model="{{ $availItem->model }}" 
-                                           data-company="{{ $availItem->company_name }}"
+                                           data-company="{{ $itemComp }}"
                                            style="accent-color: var(--dftm-navy); transform: scale(1.2); cursor: pointer;">
                                 </td>
                                 <td><span class="mono" style="font-weight: 700; color: var(--dftm-navy);">{{ $availItem->serial_number ?? '-' }}</span></td>
                                 <td><span class="mono">{{ $availItem->mac_address ?? '-' }}</span></td>
+                                <td>
+                                    <span class="badge" style="background: #E0E7FF; color: #1E1B4B; font-weight: 700; font-size: 0.76rem;">
+                                        {{ $itemComp }}
+                                    </span>
+                                </td>
                                 <td><span class="badge badge-stock">{{ $availItem->batch->batch_no ?? 'BATCH' }}</span></td>
                                 <td><strong>{{ $availItem->brand }}</strong> {{ $availItem->model }}</td>
                                 <td>{{ $availItem->box_no ?? '-' }}</td>
                             </tr>
                             @empty
                             <tr>
-                                <td colspan="6" style="text-align: center; color: var(--dftm-slate); padding: 32px;">No extra in-stock units available in inventory right now.</td>
+                                <td colspan="7" style="text-align: center; color: var(--dftm-slate); padding: 32px;">No extra in-stock units available in inventory right now.</td>
                             </tr>
                             @endforelse
                         </tbody>

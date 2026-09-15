@@ -24,19 +24,51 @@
 
     <!-- Batch Selection Bar -->
     <div style="background: #F8FAFC; border-bottom: 1px solid var(--dftm-border); padding: 16px 24px;">
-        <form action="{{ route('admin.outgoing.index') }}" method="GET" style="display: flex; flex-wrap: wrap; align-items: center; gap: 14px;">
-            <label style="font-weight: 800; font-size: 0.95rem; color: var(--dftm-navy); white-space: nowrap;">
-                <i class="bi bi-cpu-fill" style="color: var(--dftm-accent);"></i> Pumili ng Batch:
-            </label>
-            <select name="batch_id" class="form-select" style="max-width: 440px; font-weight: 700; border-color: var(--dftm-accent);" onchange="this.form.submit();">
-                @forelse($batches as $b)
-                    <option value="{{ $b->id }}" {{ $selectedBatch && $selectedBatch->id == $b->id ? 'selected' : '' }}>
-                        {{ $b->batch_no }} &bull; {{ $b->company_name ?? 'DFTM' }} &bull; {{ $b->brand }} {{ $b->model }} ({{ $b->total_quantity }} Units)
-                    </option>
-                @empty
-                    <option value="">-- No Batches in Traceability Yet --</option>
-                @endforelse
-            </select>
+        <form action="{{ route('admin.outgoing.index') }}" method="GET" style="display: flex; flex-wrap: wrap; align-items: center; gap: 16px;">
+            <!-- Company Filter -->
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <label style="font-weight: 800; font-size: 0.88rem; color: var(--dftm-navy); white-space: nowrap;">
+                    <i class="bi bi-building" style="color: var(--dftm-accent);"></i> Company:
+                </label>
+                <select name="company" class="form-select" style="min-width: 180px; max-width: 250px; font-weight: 700; border-color: var(--dftm-border);" onchange="this.form.submit();">
+                    <option value="all" {{ empty($companyFilter) || $companyFilter === 'all' ? 'selected' : '' }}>-- All Companies ({{ isset($companies) ? $companies->count() : '' }}) --</option>
+                    @if(isset($companies))
+                        @foreach($companies as $comp)
+                            <option value="{{ $comp }}" {{ ($companyFilter ?? '') === $comp ? 'selected' : '' }}>
+                                {{ $comp }}
+                            </option>
+                        @endforeach
+                    @endif
+                </select>
+            </div>
+
+            <!-- Batch Selector -->
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <label style="font-weight: 800; font-size: 0.88rem; color: var(--dftm-navy); white-space: nowrap;">
+                    <i class="bi bi-cpu-fill" style="color: var(--dftm-accent);"></i> Batch:
+                </label>
+                <select name="batch_id" class="form-select" style="min-width: 280px; max-width: 440px; font-weight: 700; border-color: var(--dftm-accent);" onchange="this.form.submit();">
+                    @php
+                        $batchesGrouped = $batches->groupBy(function($b) {
+                            return $b->company_name ?: ($b->items->first()?->company_name ?: ($b->items->first()?->transmittal?->company_name ?: 'DFTM DIGITAL SOLUTIONS'));
+                        });
+                    @endphp
+                    @forelse($batchesGrouped as $cName => $cBatches)
+                        <optgroup label="🏢 {{ $cName }}">
+                            @foreach($cBatches as $b)
+                                @php
+                                    $cDisplay = $b->company_name ?: ($b->items->first()?->company_name ?: ($b->items->first()?->transmittal?->company_name ?: 'DFTM'));
+                                @endphp
+                                <option value="{{ $b->id }}" {{ $selectedBatch && $selectedBatch->id == $b->id ? 'selected' : '' }}>
+                                    {{ $b->batch_no }} &bull; {{ $cDisplay }} &bull; {{ $b->brand }} {{ $b->model }} ({{ $b->total_quantity }} Units)
+                                </option>
+                            @endforeach
+                        </optgroup>
+                    @empty
+                        <option value="">-- No Batches in Traceability Yet --</option>
+                    @endforelse
+                </select>
+            </div>
             <noscript><button type="submit" class="btn btn-primary">Load Batch</button></noscript>
         </form>
     </div>
@@ -57,7 +89,7 @@
                 </div>
                 <div>
                     <span style="font-size: 0.72rem; font-weight: 800; text-transform: uppercase; color: var(--dftm-slate);">CLIENT / COMPANY:</span>
-                    <div style="font-weight: 700;">{{ $selectedBatch->company_name ?? 'DFTM DIGITAL SOLUTIONS' }}</div>
+                    <div style="font-weight: 700;">{{ $selectedBatch->company_name ?: ($selectedBatch->items->first()?->company_name ?: ($selectedBatch->items->first()?->transmittal?->company_name ?? 'DFTM DIGITAL SOLUTIONS')) }}</div>
                 </div>
                 <div>
                     <span style="font-size: 0.72rem; font-weight: 800; text-transform: uppercase; color: var(--dftm-slate);">TOTAL READY FOR OUTGOING:</span>

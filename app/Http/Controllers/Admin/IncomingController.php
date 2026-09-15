@@ -12,6 +12,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\Rule;
 
 class IncomingController extends Controller
 {
@@ -61,8 +62,10 @@ class IncomingController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'transmittal_no' => 'required|string|max:100',
+            'transmittal_no' => 'required|string|max:100|unique:transmittals,transmittal_no',
             'company_name' => 'required|string|max:255',
+        ], [
+            'transmittal_no.unique' => 'The transmittal number has already been encoded/taken. Please use a unique transmittal number.',
         ]);
 
         $transmittal = DB::transaction(function () use ($request) {
@@ -154,9 +157,21 @@ class IncomingController extends Controller
     {
         $transmittal = Transmittal::findOrFail($id);
 
+        $request->validate([
+            'transmittal_no' => [
+                'required',
+                'string',
+                'max:100',
+                Rule::unique('transmittals', 'transmittal_no')->ignore($transmittal->id),
+            ],
+            'company_name' => 'required|string|max:255',
+        ], [
+            'transmittal_no.unique' => 'The transmittal number has already been taken by another record.',
+        ]);
+
         DB::transaction(function () use ($request, $transmittal) {
             $transmittal->update([
-                'transmittal_no' => $request->input('transmittal_no', $transmittal->transmittal_no),
+                'transmittal_no' => trim($request->input('transmittal_no', $transmittal->transmittal_no)),
                 'company_name' => $request->input('company_name', $transmittal->company_name),
                 'date_received' => $request->input('date_received', $transmittal->date_received),
                 'brand' => $request->input('brand', $transmittal->brand),
@@ -457,6 +472,75 @@ class IncomingController extends Controller
                 'repair_status' => $item->repair_status,
                 'updated_at' => $item->updated_at ? $item->updated_at->toIso8601String() : null,
             ] : null,
+            'transmittal' => [
+                'total_quantity' => $transmittal->total_quantity,
+            ],
+        ]);
+    }
+
+    /**
+     * Add single or bulk blank rows directly into database in real-time
+     */
+    public function addRows(Request $request, $id)
+    {
+        $transmittal = Transmittal::findOrFail($id);
+
+        $quantity = max(1, min(1000, (int) $request->input('quantity', 1)));
+        $brand = $request->filled('brand') ? trim($request->input('brand')) : $transmittal->brand;
+        $model = $request->filled('model') ? trim($request->input('model')) : $transmittal->model;
+        $boxNo = $request->filled('box_no') ? trim($request->input('box_no')) : null;
+
+        $currentMaxNo = (int) ($transmittal->items()->max('item_no') ?? 0);
+        $now = now();
+        $authId = Auth::id();
+
+        DB::transaction(function () use ($transmittal, $quantity, $brand, $model, $boxNo, $currentMaxNo, $now, $authId) {
+            $insertData = [];
+            for ($i = 1; $i <= $quantity; $i++) {
+                $insertData[] = [
+                    'transmittal_id' => $transmittal->id,
+                    'item_no' => $currentMaxNo + $i,
+                    'brand' => $brand,
+                    'model' => $model,
+                    'serial_number' => null,
+                    'mac_address' => null,
+                    'box_no' => $boxNo,
+                    'repair_status' => $transmittal->status ?: 'In process',
+                    'stock_status' => 'IN_STOCK',
+                    'company_name' => $transmittal->company_name,
+                    'date_delivered' => $transmittal->date_received,
+                    'encoded_by' => $authId,
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ];
+            }
+
+            InventoryItem::insert($insertData);
+            $transmittal->recalculateQuantities();
+        });
+
+        // Retrieve the newly created items with their IDs
+        $newItems = InventoryItem::where('transmittal_id', $transmittal->id)
+            ->where('item_no', '>', $currentMaxNo)
+            ->orderBy('item_no', 'asc')
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'items' => $newItems->map(function ($it) {
+                return [
+                    'id' => $it->id,
+                    'item_no' => $it->item_no,
+                    'brand' => $it->brand ?? '',
+                    'model' => $it->model ?? '',
+                    'serial_number' => $it->serial_number ?? '',
+                    'mac_address' => $it->mac_address ?? '',
+                    'box_no' => $it->box_no ?? '',
+                    'stock_status' => $it->stock_status,
+                    'repair_status' => $it->repair_status,
+                    'updated_at' => $it->updated_at ? $it->updated_at->toIso8601String() : null,
+                ];
+            }),
             'transmittal' => [
                 'total_quantity' => $transmittal->total_quantity,
             ],

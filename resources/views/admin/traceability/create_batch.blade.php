@@ -31,9 +31,13 @@
                 </div>
                 <div class="form-group">
                     <label class="form-label">Company Name</label>
-                    <input type="text" name="company_name" list="companySuggestions" class="form-control" placeholder="Enter Company Name" value="{{ old('company_name') }}">
+                    <input type="text" name="company_name" id="batchCompanyInput" list="companySuggestions" class="form-control" placeholder="Enter Company Name" value="{{ old('company_name') }}">
                     <datalist id="companySuggestions">
-                        @if(isset($registeredClients))
+                        @if(isset($companies))
+                            @foreach($companies as $rc)
+                                <option value="{{ $rc }}">
+                            @endforeach
+                        @elseif(isset($registeredClients))
                             @foreach($registeredClients as $rc)
                                 <option value="{{ $rc }}">
                             @endforeach
@@ -90,25 +94,44 @@
                 </div>
             </div>
 
-            <!-- Transmittal Filter & Quick Actions -->
+            <!-- Company & Transmittal Filters & Quick Actions -->
             <div style="background: #F8FAFC; border: 1px solid var(--dftm-border); border-radius: var(--radius-md); padding: 12px 16px; margin-bottom: 12px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px;">
-                <div style="display: flex; align-items: center; gap: 10px; flex: 1; min-width: 280px;">
-                    <label style="font-weight: 700; font-size: 0.85rem; color: var(--dftm-navy); white-space: nowrap;">
-                        <i class="bi bi-filter-square-fill" style="color: var(--dftm-accent);"></i> Filter by Transmittal:
-                    </label>
-                    <select id="transmittalFilterSelector" class="form-select" style="max-width: 400px; font-weight: 600;">
-                        <option value="all">-- Show All Incoming Units ({{ $availableItems->count() }}) --</option>
-                        @foreach($transmittals as $t)
-                            @php
-                                $tCount = $availableItems->where('transmittal_id', $t->id)->count();
-                            @endphp
-                            @if($tCount > 0)
-                                <option value="{{ $t->id }}" data-brand="{{ $t->brand }}" data-model="{{ $t->model }}" data-company="{{ $t->company_name }}">
-                                    {{ $t->transmittal_no }} &bull; {{ $t->brand }} {{ $t->model }} ({{ $tCount }} Units)
-                                </option>
+                <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px; flex: 1; min-width: 280px;">
+                    <!-- Filter by Company -->
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <label style="font-weight: 700; font-size: 0.85rem; color: var(--dftm-navy); white-space: nowrap;">
+                            <i class="bi bi-building" style="color: var(--dftm-accent);"></i> Company:
+                        </label>
+                        <select id="companyFilterSelector" class="form-select form-select-sm" style="min-width: 180px; max-width: 240px; font-weight: 600;">
+                            <option value="all">-- All Companies --</option>
+                            @if(isset($companies))
+                                @foreach($companies as $comp)
+                                    <option value="{{ $comp }}">{{ $comp }}</option>
+                                @endforeach
                             @endif
-                        @endforeach
-                    </select>
+                        </select>
+                    </div>
+
+                    <!-- Filter by Transmittal -->
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <label style="font-weight: 700; font-size: 0.85rem; color: var(--dftm-navy); white-space: nowrap;">
+                            <i class="bi bi-filter-square-fill" style="color: var(--dftm-accent);"></i> Transmittal:
+                        </label>
+                        <select id="transmittalFilterSelector" class="form-select form-select-sm" style="min-width: 220px; max-width: 380px; font-weight: 600;">
+                            <option value="all" data-company="all">-- All Transmittals ({{ $availableItems->count() }} Units) --</option>
+                            @foreach($transmittals as $t)
+                                @php
+                                    $tCount = $availableItems->where('transmittal_id', $t->id)->count();
+                                    $tCompany = $t->company_name ?: 'DFTM DIGITAL SOLUTIONS';
+                                @endphp
+                                @if($tCount > 0)
+                                    <option value="{{ $t->id }}" data-brand="{{ $t->brand }}" data-model="{{ $t->model }}" data-company="{{ $tCompany }}">
+                                        {{ $t->transmittal_no }} &bull; {{ $tCompany }} &bull; {{ $t->brand }} {{ $t->model }} ({{ $tCount }} Units)
+                                    </option>
+                                @endif
+                            @endforeach
+                        </select>
+                    </div>
                 </div>
 
                 <div style="display: flex; align-items: center; gap: 8px;">
@@ -118,7 +141,7 @@
                     <button type="button" id="btnDeselectAll" class="btn btn-outline btn-sm" style="color: var(--dftm-slate);">
                         <i class="bi bi-x-circle"></i> Clear Selection
                     </button>
-                    <div style="width: 200px;">
+                    <div style="width: 180px;">
                         <input type="text" id="quickUnitSearch" class="form-control form-control-sm" placeholder="Search serial/MAC...">
                     </div>
                 </div>
@@ -134,6 +157,7 @@
                             </th>
                             <th>SERIAL NUMBER</th>
                             <th>MAC ADDRESS</th>
+                            <th>COMPANY</th>
                             <th>TRANSMITTAL NO.</th>
                             <th>BRAND & MODEL</th>
                             <th>BOX NO.</th>
@@ -142,18 +166,26 @@
                     </thead>
                     <tbody>
                         @forelse($availableItems as $item)
-                        <tr class="unit-row" data-transmittal-id="{{ $item->transmittal_id }}">
+                        @php
+                            $itemComp = $item->company_name ?: ($item->transmittal?->company_name ?? 'DFTM DIGITAL SOLUTIONS');
+                        @endphp
+                        <tr class="unit-row" data-transmittal-id="{{ $item->transmittal_id }}" data-company="{{ strtolower(trim($itemComp)) }}">
                             <td style="text-align: center;">
                                 <input type="checkbox" name="selected_items[]" value="{{ $item->id }}" 
                                        class="unit-checkbox" 
                                        data-transmittal-id="{{ $item->transmittal_id }}"
                                        data-brand="{{ $item->brand }}"
                                        data-model="{{ $item->model }}"
-                                       data-company="{{ $item->company_name ?: ($item->transmittal?->company_name ?? '') }}"
+                                       data-company="{{ $itemComp }}"
                                        style="accent-color: var(--dftm-navy); transform: scale(1.2); cursor: pointer;">
                             </td>
                             <td><span class="mono" style="font-weight: 700; color: var(--dftm-navy);">{{ $item->serial_number ?? '-' }}</span></td>
                             <td><span class="mono">{{ $item->mac_address ?? '-' }}</span></td>
+                            <td>
+                                <span class="badge" style="background: #E0E7FF; color: #1E1B4B; font-weight: 700; font-size: 0.76rem;">
+                                    {{ $itemComp }}
+                                </span>
+                            </td>
                             <td>
                                 <span class="badge" style="background: #EEF2FF; color: var(--dftm-navy);">
                                     {{ $item->transmittal->transmittal_no ?? 'TR' }}
@@ -165,7 +197,7 @@
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="7" style="text-align: center; color: var(--dftm-slate); padding: 40px;">
+                            <td colspan="8" style="text-align: center; color: var(--dftm-slate); padding: 40px;">
                                 <i class="bi bi-inbox" style="font-size: 2rem; display: block; margin-bottom: 8px;"></i>
                                 No unassigned units found in Incoming. All units have been assigned to batches!
                             </td>
@@ -197,6 +229,7 @@
 document.addEventListener('DOMContentLoaded', function() {
     const table = document.getElementById('availableUnitsTable');
     const masterCheckbox = document.getElementById('masterSelectCheckbox');
+    const companySelector = document.getElementById('companyFilterSelector');
     const transmittalSelector = document.getElementById('transmittalFilterSelector');
     const btnSelectAllVisible = document.getElementById('btnSelectAllVisible');
     const btnDeselectAll = document.getElementById('btnDeselectAll');
@@ -223,20 +256,51 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function filterRows() {
+        const selectedCompany = companySelector ? companySelector.value.toLowerCase().trim() : 'all';
         const selectedTId = transmittalSelector.value;
         const q = quickSearch.value.toLowerCase().trim();
         const rows = table.querySelectorAll('tbody tr.unit-row');
 
         rows.forEach(r => {
             const rowTId = r.getAttribute('data-transmittal-id');
+            const rowCompany = (r.getAttribute('data-company') || '').toLowerCase().trim();
+            
+            const matchesC = (selectedCompany === 'all' || rowCompany === selectedCompany || rowCompany.includes(selectedCompany));
             const matchesT = (selectedTId === 'all' || rowTId === selectedTId);
             const matchesSearch = !q || r.textContent.toLowerCase().includes(q);
 
-            if (matchesT && matchesSearch) {
+            if (matchesC && matchesT && matchesSearch) {
                 r.style.display = '';
             } else {
                 r.style.display = 'none';
             }
+        });
+    }
+
+    if (companySelector) {
+        companySelector.addEventListener('change', function() {
+            const selectedCompany = this.value;
+            const companyInput = document.querySelector('[name="company_name"]');
+            if (selectedCompany !== 'all' && companyInput) {
+                companyInput.value = selectedCompany;
+            }
+
+            // Also filter transmittal options matching company
+            if (transmittalSelector) {
+                const tOpts = transmittalSelector.querySelectorAll('option');
+                tOpts.forEach(opt => {
+                    if (opt.value === 'all') return;
+                    const optCompany = (opt.getAttribute('data-company') || '').toLowerCase();
+                    if (selectedCompany === 'all' || optCompany === selectedCompany.toLowerCase()) {
+                        opt.style.display = '';
+                    } else {
+                        opt.style.display = 'none';
+                    }
+                });
+                transmittalSelector.value = 'all';
+            }
+
+            filterRows();
         });
     }
 

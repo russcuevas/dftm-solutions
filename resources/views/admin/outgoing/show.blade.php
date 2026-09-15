@@ -32,7 +32,7 @@
                 <div>
                     <span style="font-size: 0.72rem; font-weight: 700; text-transform: uppercase; color: var(--dftm-slate);">COMPANY NAME:</span>
                     <div style="font-weight: 700; color: var(--dftm-navy); font-size: 1.05rem;">
-                        {{ $slip->company_name ?? 'N/A' }}
+                        {{ $slip->company_name ?: ($slip->items->first()?->company_name ?: ($slip->items->first()?->transmittal?->company_name ?? 'N/A')) }}
                     </div>
                 </div>
                 <div>

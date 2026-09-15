@@ -59,19 +59,51 @@
     <div class="card" style="margin-bottom: 16px;">
         <div class="card-body" style="padding: 16px 20px;">
             <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px;">
-                <div style="display: flex; align-items: center; gap: 12px; flex: 1; min-width: 320px;">
-                    <label style="font-weight: 800; color: var(--dftm-navy); white-space: nowrap; font-size: 0.95rem;">
-                        <i class="bi bi-filter-circle-fill" style="color: var(--dftm-accent);"></i> Select Batch:
-                    </label>
-                    <select id="activeBatchSelector" class="form-select" style="max-width: 380px; font-weight: 700; border-color: var(--dftm-accent);" onchange="location.href='{{ route('admin.traceability.index') }}?batch_id=' + this.value;">
-                        @forelse($batches as $b)
-                            <option value="{{ $b->id }}" {{ $selectedBatch && $selectedBatch->id == $b->id ? 'selected' : '' }}>
-                                {{ $b->batch_no }} &bull; {{ $b->company_name ?? 'DFTM' }} ({{ $b->items->count() }} Units)
-                            </option>
-                        @empty
-                            <option value="">-- No Batches Created Yet --</option>
-                        @endforelse
-                    </select>
+                <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 16px; flex: 1; min-width: 320px;">
+                    <!-- Company Filter -->
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <label style="font-weight: 800; color: var(--dftm-navy); white-space: nowrap; font-size: 0.88rem;">
+                            <i class="bi bi-building" style="color: var(--dftm-accent);"></i> Company:
+                        </label>
+                        <select id="companyFilterSelector" class="form-select" style="min-width: 180px; max-width: 250px; font-weight: 700; border-color: var(--dftm-border);" onchange="location.href='{{ route('admin.traceability.index') }}?company=' + encodeURIComponent(this.value);">
+                            <option value="all" {{ empty($companyFilter) || $companyFilter === 'all' ? 'selected' : '' }}>-- All Companies ({{ isset($companies) ? $companies->count() : '' }}) --</option>
+                            @if(isset($companies))
+                                @foreach($companies as $comp)
+                                    <option value="{{ $comp }}" {{ ($companyFilter ?? '') === $comp ? 'selected' : '' }}>
+                                        {{ $comp }}
+                                    </option>
+                                @endforeach
+                            @endif
+                        </select>
+                    </div>
+
+                    <!-- Batch Selector -->
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <label style="font-weight: 800; color: var(--dftm-navy); white-space: nowrap; font-size: 0.88rem;">
+                            <i class="bi bi-filter-circle-fill" style="color: var(--dftm-accent);"></i> Select Batch:
+                        </label>
+                        <select id="activeBatchSelector" class="form-select" style="min-width: 280px; max-width: 420px; font-weight: 700; border-color: var(--dftm-accent);" onchange="const c = document.getElementById('companyFilterSelector').value; location.href='{{ route('admin.traceability.index') }}?' + (c && c !== 'all' ? 'company=' + encodeURIComponent(c) + '&' : '') + 'batch_id=' + this.value;">
+                            @php
+                                $batchesGrouped = $batches->groupBy(function($b) {
+                                    return $b->company_name ?: ($b->items->first()?->company_name ?: ($b->items->first()?->transmittal?->company_name ?: 'DFTM DIGITAL SOLUTIONS'));
+                                });
+                            @endphp
+                            @forelse($batchesGrouped as $cName => $cBatches)
+                                <optgroup label="🏢 {{ $cName }}">
+                                    @foreach($cBatches as $b)
+                                        @php
+                                            $cDisplay = $b->company_name ?: ($b->items->first()?->company_name ?: ($b->items->first()?->transmittal?->company_name ?: 'DFTM'));
+                                        @endphp
+                                        <option value="{{ $b->id }}" {{ $selectedBatch && $selectedBatch->id == $b->id ? 'selected' : '' }}>
+                                            {{ $b->batch_no }} &bull; {{ $cDisplay }} ({{ $b->items->count() }} Units)
+                                        </option>
+                                    @endforeach
+                                </optgroup>
+                            @empty
+                                <option value="">-- No Batches Found --</option>
+                            @endforelse
+                        </select>
+                    </div>
                 </div>
 
                 <div style="display: flex; align-items: center; gap: 10px;">
@@ -110,7 +142,7 @@
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; font-size: 0.85rem;">
                     <div>
                         <span style="font-weight: 800; color: var(--dftm-slate); font-size: 0.72rem; text-transform: uppercase;">COMPANY NAME:</span>
-                        <div style="font-weight: 800; color: var(--dftm-navy); font-size: 1rem;">{{ $selectedBatch->company_name ?? 'DFTM DIGITAL SOLUTIONS' }}</div>
+                        <div style="font-weight: 800; color: var(--dftm-navy); font-size: 1rem;">{{ $selectedBatch->company_name ?: ($selectedBatch->items->first()?->company_name ?: ($selectedBatch->items->first()?->transmittal?->company_name ?? 'DFTM DIGITAL SOLUTIONS')) }}</div>
                     </div>
                     <div>
                         <span style="font-weight: 800; color: var(--dftm-slate); font-size: 0.72rem; text-transform: uppercase;">BATCH NUMBER:</span>

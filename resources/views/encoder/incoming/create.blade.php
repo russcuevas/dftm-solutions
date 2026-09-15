@@ -69,8 +69,15 @@
                     <input type="text" name="model" class="form-control" placeholder="e.g. EG8145V5 / ZXHN F670L" value="{{ old('model') }}">
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Initial Status (Optional)</label>
-                    <input type="text" name="status" class="form-control" placeholder="e.g. In process / Received" value="{{ old('status', 'In process') }}">
+                    <label class="form-label">Status (Optional)</label>
+                    <input type="text" name="status" list="statusSuggestions" class="form-control" placeholder="e.g. In process / Received" value="{{ old('status', 'In process') }}">
+                    <datalist id="statusSuggestions">
+                        <option value="In process">
+                        <option value="Received">
+                        <option value="Pending Diagnostic">
+                        <option value="Repaired">
+                        <option value="BER">
+                    </datalist>
                 </div>
             </div>
 

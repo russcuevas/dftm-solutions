@@ -77,6 +77,7 @@ Route::middleware(['admin'])->prefix('admin')->name('admin.')->group(function ()
     Route::get('/incoming/{id}/print', [AdminIncomingController::class, 'print'])->name('incoming.print');
     Route::get('/incoming/{id}/items', [AdminIncomingController::class, 'getItems'])->name('incoming.items');
     Route::post('/incoming/{id}/save-item', [AdminIncomingController::class, 'saveItem'])->name('incoming.saveItem');
+    Route::post('/incoming/{id}/add-rows', [AdminIncomingController::class, 'addRows'])->name('incoming.addRows');
     Route::delete('/incoming/{id}/item/{itemId}', [AdminIncomingController::class, 'deleteItem'])->name('incoming.deleteItem');
     Route::post('/incoming/{id}/save-header', [AdminIncomingController::class, 'saveHeader'])->name('incoming.saveHeader');
 
@@ -165,6 +166,7 @@ Route::middleware(['encoder'])->prefix('encoder')->name('encoder.')->group(funct
     Route::get('/incoming/{id}/print', [EncoderIncomingController::class, 'print'])->name('incoming.print');
     Route::get('/incoming/{id}/items', [EncoderIncomingController::class, 'getItems'])->name('incoming.items');
     Route::post('/incoming/{id}/save-item', [EncoderIncomingController::class, 'saveItem'])->name('incoming.saveItem');
+    Route::post('/incoming/{id}/add-rows', [EncoderIncomingController::class, 'addRows'])->name('incoming.addRows');
     Route::delete('/incoming/{id}/item/{itemId}', [EncoderIncomingController::class, 'deleteItem'])->name('incoming.deleteItem');
     Route::post('/incoming/{id}/save-header', [EncoderIncomingController::class, 'saveHeader'])->name('incoming.saveHeader');
 

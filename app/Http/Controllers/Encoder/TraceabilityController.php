@@ -15,11 +15,48 @@ class TraceabilityController extends Controller
 {
     public function index(Request $request)
     {
-        $batches = Batch::with('items')->latest()->get();
+        // Auto-heal any batches missing company_name if their items or transmittals have it
+        $batchesToHeal = Batch::where(function($q) {
+            $q->whereNull('company_name')
+              ->orWhere('company_name', '')
+              ->orWhere('company_name', 'DFTM DIGITAL SOLUTIONS');
+        })->with(['items.transmittal'])->get();
 
+        foreach ($batchesToHeal as $b) {
+            $firstItem = $b->items->first();
+            $detectedCompany = $firstItem?->company_name ?: ($firstItem?->transmittal?->company_name ?? null);
+            if ($detectedCompany && $detectedCompany !== 'DFTM DIGITAL SOLUTIONS') {
+                $b->update(['company_name' => $detectedCompany]);
+            }
+        }
+
+        // Collect all distinct companies across Batches, Transmittals, Items, and Client accounts
+        $companies = Batch::whereNotNull('company_name')->where('company_name', '!=', '')->pluck('company_name')
+            ->merge(Transmittal::whereNotNull('company_name')->where('company_name', '!=', '')->pluck('company_name'))
+            ->merge(InventoryItem::whereNotNull('company_name')->where('company_name', '!=', '')->pluck('company_name'))
+            ->merge(\App\Models\User::where('role', 'client')->whereNotNull('company_name')->where('company_name', '!=', '')->pluck('company_name'))
+            ->unique()
+            ->sort()
+            ->values();
+
+        $companyFilter = $request->input('company');
         $activeBatchId = $request->input('batch_id');
         $statusFilter = $request->input('status');
         $brandFilter = $request->input('brand');
+
+        $batchesQuery = Batch::with(['items.transmittal'])->latest();
+        if (!empty($companyFilter) && $companyFilter !== 'all') {
+            $batchesQuery->where(function($q) use ($companyFilter) {
+                $q->where('company_name', $companyFilter)
+                  ->orWhereHas('items', function($iq) use ($companyFilter) {
+                      $iq->where('company_name', $companyFilter)
+                         ->orWhereHas('transmittal', function($tq) use ($companyFilter) {
+                             $tq->where('company_name', $companyFilter);
+                         });
+                  });
+            });
+        }
+        $batches = $batchesQuery->get();
 
         if (!$activeBatchId && $batches->isNotEmpty()) {
             $activeBatchId = $batches->first()->id;
@@ -53,7 +90,7 @@ class TraceabilityController extends Controller
         $items = $query->paginate(50)->withQueryString();
 
         $selectedBatch = !empty($activeBatchId) && $activeBatchId !== 'all' 
-            ? Batch::with('items')->find($activeBatchId) 
+            ? Batch::with(['items.transmittal'])->find($activeBatchId) 
             : null;
 
         $metricsQuery = InventoryItem::query();
@@ -77,6 +114,8 @@ class TraceabilityController extends Controller
             'batches',
             'selectedBatch',
             'activeBatchId',
+            'companies',
+            'companyFilter',
             'repairedCount',
             'inProcessCount',
             'berCount',
@@ -98,9 +137,18 @@ class TraceabilityController extends Controller
             $q->whereNull('batch_id');
         })->latest()->get();
 
-        $registeredClients = \App\Models\User::where('role', 'client')->pluck('company_name')->unique()->filter();
+        $companies = \App\Models\User::where('role', 'client')->whereNotNull('company_name')->pluck('company_name')
+            ->merge(Transmittal::whereNotNull('company_name')->pluck('company_name'))
+            ->merge(InventoryItem::whereNotNull('company_name')->pluck('company_name'))
+            ->merge(Batch::whereNotNull('company_name')->pluck('company_name'))
+            ->filter()
+            ->unique()
+            ->sort()
+            ->values();
 
-        return view('encoder.traceability.create_batch', compact('nextBatchNo', 'availableItems', 'transmittals', 'registeredClients'));
+        $registeredClients = $companies;
+
+        return view('encoder.traceability.create_batch', compact('nextBatchNo', 'availableItems', 'transmittals', 'registeredClients', 'companies'));
     }
 
     public function storeBatch(Request $request)

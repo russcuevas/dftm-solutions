@@ -18,9 +18,47 @@ class OutgoingController extends Controller
      */
     public function index(Request $request)
     {
-        $batches = Batch::with('items')->latest()->get();
+        // Auto-heal batches missing company_name
+        $batchesToHeal = Batch::where(function($q) {
+            $q->whereNull('company_name')
+              ->orWhere('company_name', '')
+              ->orWhere('company_name', 'DFTM DIGITAL SOLUTIONS');
+        })->with(['items.transmittal'])->get();
 
+        foreach ($batchesToHeal as $b) {
+            $firstItem = $b->items->first();
+            $detectedCompany = $firstItem?->company_name ?: ($firstItem?->transmittal?->company_name ?? null);
+            if ($detectedCompany && $detectedCompany !== 'DFTM DIGITAL SOLUTIONS') {
+                $b->update(['company_name' => $detectedCompany]);
+            }
+        }
+
+        // Collect all distinct companies
+        $companies = Batch::whereNotNull('company_name')->where('company_name', '!=', '')->pluck('company_name')
+            ->merge(\App\Models\Transmittal::whereNotNull('company_name')->where('company_name', '!=', '')->pluck('company_name'))
+            ->merge(InventoryItem::whereNotNull('company_name')->where('company_name', '!=', '')->pluck('company_name'))
+            ->merge(\App\Models\User::where('role', 'client')->whereNotNull('company_name')->where('company_name', '!=', '')->pluck('company_name'))
+            ->unique()
+            ->sort()
+            ->values();
+
+        $companyFilter = $request->input('company');
         $selectedBatchId = $request->input('batch_id');
+
+        $batchesQuery = Batch::with(['items.transmittal'])->latest();
+        if (!empty($companyFilter) && $companyFilter !== 'all') {
+            $batchesQuery->where(function($q) use ($companyFilter) {
+                $q->where('company_name', $companyFilter)
+                  ->orWhereHas('items', function($iq) use ($companyFilter) {
+                      $iq->where('company_name', $companyFilter)
+                         ->orWhereHas('transmittal', function($tq) use ($companyFilter) {
+                             $tq->where('company_name', $companyFilter);
+                         });
+                  });
+            });
+        }
+        $batches = $batchesQuery->get();
+
         if (!$selectedBatchId && $batches->isNotEmpty()) {
             $selectedBatchId = $batches->first()->id;
         }
@@ -28,7 +66,7 @@ class OutgoingController extends Controller
         $selectedBatch = $selectedBatchId ? Batch::with(['items.transmittal'])->find($selectedBatchId) : null;
         $items = $selectedBatch ? $selectedBatch->items : collect();
 
-        return view('admin.outgoing.index', compact('batches', 'selectedBatch', 'selectedBatchId', 'items'));
+        return view('admin.outgoing.index', compact('batches', 'selectedBatch', 'selectedBatchId', 'items', 'companies', 'companyFilter'));
     }
 
     public function create(Request $request)
@@ -36,18 +74,27 @@ class OutgoingController extends Controller
         $slipNo = 'ORS-' . date('Ymd') . '-' . str_pad(OutgoingSlip::count() + 1, 3, '0', STR_PAD_LEFT);
 
         // Fetch all in-stock items available for release
-        $availableItems = InventoryItem::with('batch')
+        $availableItems = InventoryItem::with(['batch', 'transmittal'])
             ->where('stock_status', 'IN_STOCK')
             ->orderBy('batch_id')
             ->orderBy('item_no')
             ->get();
 
-        $batches = Batch::where('in_stock_quantity', '>', 0)->get();
+        $batches = Batch::with(['items.transmittal'])->where('in_stock_quantity', '>', 0)->get();
         $selectedBatchId = $request->input('batch_id');
 
-        $registeredClients = \App\Models\User::where('role', 'client')->pluck('company_name')->unique()->filter();
+        $companies = \App\Models\User::where('role', 'client')->whereNotNull('company_name')->pluck('company_name')
+            ->merge(\App\Models\Transmittal::whereNotNull('company_name')->pluck('company_name'))
+            ->merge(InventoryItem::whereNotNull('company_name')->pluck('company_name'))
+            ->merge(Batch::whereNotNull('company_name')->pluck('company_name'))
+            ->filter()
+            ->unique()
+            ->sort()
+            ->values();
 
-        return view('admin.outgoing.create', compact('slipNo', 'availableItems', 'batches', 'selectedBatchId', 'registeredClients'));
+        $registeredClients = $companies;
+
+        return view('admin.outgoing.create', compact('slipNo', 'availableItems', 'batches', 'selectedBatchId', 'registeredClients', 'companies'));
     }
 
     public function store(Request $request)

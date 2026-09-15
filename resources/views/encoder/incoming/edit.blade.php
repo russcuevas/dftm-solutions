@@ -169,6 +169,18 @@
                     <input type="text" name="model" class="form-control transmittal-header-input"
                         value="{{ old('model', $transmittal->model) }}" placeholder="e.g. EG8145V5">
                 </div>
+                <div class="form-group">
+                    <label class="form-label">Status (Optional)</label>
+                    <input type="text" name="status" list="statusSuggestions" class="form-control transmittal-header-input"
+                        value="{{ old('status', $transmittal->status) }}" placeholder="e.g. In process / Received">
+                    <datalist id="statusSuggestions">
+                        <option value="In process">
+                        <option value="Received">
+                        <option value="Pending Diagnostic">
+                        <option value="Repaired">
+                        <option value="BER">
+                    </datalist>
+                </div>
             </div>
 
             <!-- Fast Serial Search Bar & Custom Add Row Bar -->
@@ -332,6 +344,7 @@
         document.addEventListener('DOMContentLoaded', function() {
             const getItemsUrl = '{{ route('encoder.incoming.items', $transmittal->id) }}';
             const saveItemUrl = '{{ route('encoder.incoming.saveItem', $transmittal->id) }}';
+            const addRowsUrl = '{{ route('encoder.incoming.addRows', $transmittal->id) }}';
             const deleteItemUrl = '{{ url('encoder/incoming/' . $transmittal->id . '/item') }}';
             const saveHeaderUrl = '{{ route('encoder.incoming.saveHeader', $transmittal->id) }}';
             const checkDuplicateUrl = '{{ route('encoder.incoming.checkDuplicate') }}';
@@ -670,8 +683,44 @@
                 }
             }
 
-            function addNewRow(autoFocus = true) {
-                const currentCount = container.querySelectorAll('.subtable-row').length + 1;
+            // Helper to create DOM element for an inventory item
+            function createRowElement(item) {
+                const rowDiv = document.createElement('div');
+                rowDiv.className = 'subtable-row live-row-remote';
+                rowDiv.setAttribute('data-item-id', item.id);
+                rowDiv.style.cssText = 'grid-template-columns: 40px 1.5fr 1.5fr 1fr 1fr 1fr 30px 40px; gap: 8px;';
+                rowDiv.innerHTML = `
+                    <input type="hidden" name="item_id[]" class="row-item-id" value="${item.id}">
+                    <div class="subtable-row-num">${item.item_no}</div>
+                    <div>
+                        <input type="text" name="serial_number[]" class="form-control mono row-sn" value="${item.serial_number || ''}" placeholder="Scan Serial Number">
+                    </div>
+                    <div>
+                        <input type="text" name="mac_address[]" class="form-control mono row-mac" value="${item.mac_address || ''}" placeholder="Scan MAC Address">
+                    </div>
+                    <div>
+                        <input type="text" name="row_model[]" class="form-control row-model" value="${item.model || ''}" placeholder="Model">
+                    </div>
+                    <div>
+                        <input type="text" name="row_brand[]" class="form-control row-brand" value="${item.brand || ''}" placeholder="Brand">
+                    </div>
+                    <div>
+                        <input type="text" name="box_no[]" class="form-control row-box" value="${item.box_no || ''}" placeholder="Box No">
+                    </div>
+                    <div class="row-status-indicator" style="display: flex; align-items: center; justify-content: center; font-size: 0.9rem;">
+                        ${item.serial_number ? '<i class="bi bi-check-lg" style="color: #10B981; font-weight: 800;"></i>' : ''}
+                    </div>
+                    <div style="display: flex; align-items: center; justify-content: center;">
+                        <button type="button" class="btn btn-outline btn-icon btn-remove-row" title="Delete Row" style="color: #DC2626; border-color: #FECACA;">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                `;
+                return rowDiv;
+            }
+
+            // Real-time Database Row Addition (Single or Bulk, e.g. 50, 100 rows)
+            async function requestAddRows(quantity = 1, autoFocus = true) {
                 const defaultBrand = document.querySelector('[name="brand"]')?.value || '';
                 const defaultModel = document.querySelector('[name="model"]')?.value || '';
 
@@ -682,114 +731,95 @@
                     if (lb && lb.value.trim()) defaultBox = lb.value.trim();
                 }
 
-                const rowDiv = document.createElement('div');
-                rowDiv.className = 'subtable-row live-row-new';
-                rowDiv.style.cssText = 'grid-template-columns: 40px 1.5fr 1.5fr 1fr 1fr 1fr 30px 40px; gap: 8px;';
-                rowDiv.innerHTML = `
-                    <input type="hidden" name="item_id[]" class="row-item-id" value="">
-                    <div class="subtable-row-num">${currentCount}</div>
-                    <div>
-                        <input type="text" name="serial_number[]" class="form-control mono row-sn" placeholder="Scan Serial Number">
-                    </div>
-                    <div>
-                        <input type="text" name="mac_address[]" class="form-control mono row-mac" placeholder="Scan MAC Address">
-                    </div>
-                    <div>
-                        <input type="text" name="row_model[]" class="form-control row-model" value="${defaultModel}" placeholder="Model">
-                    </div>
-                    <div>
-                        <input type="text" name="row_brand[]" class="form-control row-brand" value="${defaultBrand}" placeholder="Brand">
-                    </div>
-                    <div>
-                        <input type="text" name="box_no[]" class="form-control row-box" value="${defaultBox}" placeholder="Box No">
-                    </div>
-                    <div class="row-status-indicator" style="display: flex; align-items: center; justify-content: center; font-size: 0.9rem;"></div>
-                    <div style="display: flex; align-items: center; justify-content: center;">
-                        <button type="button" class="btn btn-outline btn-icon btn-remove-row" title="Delete Row" style="color: #DC2626; border-color: #FECACA;">
-                            <i class="bi bi-trash"></i>
-                        </button>
-                    </div>
-                `;
+                if (btnGenerateCustomRows) btnGenerateCustomRows.disabled = true;
+                if (btnLiveAddSingleRow) btnLiveAddSingleRow.disabled = true;
+                setSyncStatus('saving');
 
-                container.appendChild(rowDiv);
-                attachRowListeners(rowDiv);
+                try {
+                    const res = await fetch(addRowsUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': csrfToken,
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            _token: csrfToken,
+                            quantity: quantity,
+                            brand: defaultBrand,
+                            model: defaultModel,
+                            box_no: defaultBox
+                        })
+                    });
 
-                if (autoFocus) {
-                    const snInput = rowDiv.querySelector('.row-sn');
-                    if (snInput) {
-                        setTimeout(() => {
-                            snInput.focus();
-                            snInput.select();
-                        }, 40);
+                    const data = await res.json();
+                    if (data.success && Array.isArray(data.items)) {
+                        const fragment = document.createDocumentFragment();
+                        data.items.forEach(it => {
+                            const rowDiv = createRowElement(it);
+                            fragment.appendChild(rowDiv);
+                        });
+                        container.appendChild(fragment);
+
+                        data.items.forEach(it => {
+                            const el = container.querySelector(`[data-item-id="${it.id}"]`);
+                            if (el) attachRowListeners(el);
+                        });
+
+                        renumberRows();
+
+                        if (totalUnitsCount && data.transmittal) {
+                            totalUnitsCount.textContent = data.transmittal.total_quantity;
+                        }
+                        setSyncStatus('saved');
+
+                        if (autoFocus && data.items.length > 0) {
+                            const firstNewRow = container.querySelector(`[data-item-id="${data.items[0].id}"]`);
+                            if (firstNewRow) {
+                                const snInput = firstNewRow.querySelector('.row-sn');
+                                if (snInput) {
+                                    setTimeout(() => {
+                                        snInput.focus();
+                                        snInput.select();
+                                    }, 40);
+                                }
+                            }
+                        }
                     }
+                } catch (err) {
+                    console.error('Failed to add rows to database:', err);
+                } finally {
+                    if (btnGenerateCustomRows) btnGenerateCustomRows.disabled = false;
+                    if (btnLiveAddSingleRow) btnLiveAddSingleRow.disabled = false;
                 }
-                return rowDiv;
             }
 
+            // Continuous navigation helper
+            function moveToNextRowOrAddNew(currentRow) {
+                const nextRow = currentRow.nextElementSibling;
+                if (nextRow && nextRow.classList.contains('subtable-row')) {
+                    const nextSn = nextRow.querySelector('.row-sn');
+                    if (nextSn) {
+                        nextSn.focus();
+                        nextSn.select();
+                    }
+                } else {
+                    requestAddRows(1, true);
+                }
+            }
+
+            // Custom Bulk Row Generator (e.g. 50, 100 rows directly into database)
             if (btnGenerateCustomRows) {
                 btnGenerateCustomRows.addEventListener('click', function() {
                     const count = parseInt(customRowQtyInput.value, 10) || 10;
                     if (count <= 0) return;
-
-                    const initialRows = container.querySelectorAll('.subtable-row').length;
-                    const fragment = document.createDocumentFragment();
-                    const defaultBrand = document.querySelector('[name="brand"]')?.value || '';
-                    const defaultModel = document.querySelector('[name="model"]')?.value || '';
-
-                    let defaultBox = '';
-                    const lastRow = container.querySelector('.subtable-row:last-child');
-                    if (lastRow) {
-                        const lb = lastRow.querySelector('.row-box');
-                        if (lb && lb.value.trim()) defaultBox = lb.value.trim();
-                    }
-
-                    for (let i = 1; i <= count; i++) {
-                        const rowNum = initialRows + i;
-                        const rowDiv = document.createElement('div');
-                        rowDiv.className = 'subtable-row';
-                        rowDiv.style.cssText = 'grid-template-columns: 40px 1.5fr 1.5fr 1fr 1fr 1fr 30px 40px; gap: 8px;';
-                        rowDiv.innerHTML = `
-                            <input type="hidden" name="item_id[]" class="row-item-id" value="">
-                            <div class="subtable-row-num">${rowNum}</div>
-                            <div>
-                                <input type="text" name="serial_number[]" class="form-control mono row-sn" placeholder="Scan Serial Number">
-                            </div>
-                            <div>
-                                <input type="text" name="mac_address[]" class="form-control mono row-mac" placeholder="Scan MAC Address">
-                            </div>
-                            <div>
-                                <input type="text" name="row_model[]" class="form-control row-model" value="${defaultModel}" placeholder="Model">
-                            </div>
-                            <div>
-                                <input type="text" name="row_brand[]" class="form-control row-brand" value="${defaultBrand}" placeholder="Brand">
-                            </div>
-                            <div>
-                                <input type="text" name="box_no[]" class="form-control row-box" value="${defaultBox}" placeholder="Box No">
-                            </div>
-                            <div class="row-status-indicator" style="display: flex; align-items: center; justify-content: center; font-size: 0.9rem;"></div>
-                            <div style="display: flex; align-items: center; justify-content: center;">
-                                <button type="button" class="btn btn-outline btn-icon btn-remove-row" title="Delete Row" style="color: #DC2626; border-color: #FECACA;">
-                                    <i class="bi bi-trash"></i>
-                                </button>
-                            </div>
-                        `;
-                        fragment.appendChild(rowDiv);
-                    }
-
-                    container.appendChild(fragment);
-                    container.querySelectorAll('.subtable-row').forEach(r => attachRowListeners(r));
-
-                    const firstEmpty = container.querySelector('.row-sn:not([value]), .row-sn[value=""]');
-                    if (firstEmpty) {
-                        firstEmpty.focus();
-                        firstEmpty.select();
-                    }
+                    requestAddRows(count, true);
                 });
             }
 
             if (btnLiveAddSingleRow) {
                 btnLiveAddSingleRow.addEventListener('click', function() {
-                    addNewRow(true);
+                    requestAddRows(1, true);
                 });
             }
 
