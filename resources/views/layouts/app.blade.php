@@ -8,7 +8,7 @@
     <title>@yield('title', 'Inventory & Repair System') - DFTM Solutions</title>
 
     <!-- DFTM Enterprise Theme CSS -->
-    <link rel="stylesheet" href="{{ asset('css/dftm-theme.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/dftm-theme.css') }}?v={{ file_exists(public_path('css/dftm-theme.css')) ? filemtime(public_path('css/dftm-theme.css')) : time() }}">
 
     <!-- Bootstrap Icons Font -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
@@ -23,49 +23,92 @@
                 <img src="{{ asset('images/logo.png') }}" alt="DFTM Logo" class="sidebar-logo">
             </div>
 
+            @if (auth()->user() && auth()->user()->isAdmin())
+                <!-- 2 Portal Buttons Switcher -->
+                <div class="sidebar-portal-switch">
+                    <a href="{{ route('admin.dashboard') }}" 
+                       class="portal-tab-btn {{ !request()->routeIs('admin.consumables.*') ? 'active' : '' }}">
+                        <i class="bi bi-building"></i> OFFICE
+                    </a>
+                    <a href="{{ route('admin.consumables.index') }}" 
+                       class="portal-tab-btn {{ request()->routeIs('admin.consumables.*') ? 'active' : '' }}">
+                        <i class="bi bi-box-seam-fill"></i> CONSUMABLE
+                    </a>
+                </div>
+            @endif
+
             <ul class="sidebar-menu">
                 @if (auth()->user() && auth()->user()->isAdmin())
-                    <!-- Admin Navigation -->
-                    <li class="menu-heading">Main Overview</li>
-                    <li class="menu-item">
-                        <a href="{{ route('admin.dashboard') }}"
-                            class="menu-link {{ request()->routeIs('admin.dashboard') ? 'active' : '' }}">
-                            <span class="menu-icon"><i class="bi bi-grid-1x2-fill"></i></span>
-                            <span>Dashboard</span>
-                        </a>
-                    </li>
-
-                    <li class="menu-heading">Repair Operations</li>
-                    <li class="menu-item">
-                        <a href="{{ route('admin.incoming.index') }}"
-                            class="menu-link {{ request()->routeIs('admin.incoming.*') ? 'active' : '' }}">
-                            <span class="menu-icon"><i class="bi bi-box-arrow-in-down"></i></span>
-                            <span>Incoming Slips</span>
-                        </a>
-                    </li>
-                    <li class="menu-item">
-                        <a href="{{ route('admin.outgoing.index') }}"
-                            class="menu-link {{ request()->routeIs('admin.outgoing.*') ? 'active' : '' }}">
-                            <span class="menu-icon"><i class="bi bi-box-arrow-up-right"></i></span>
-                            <span>Outgoing Slips</span>
-                        </a>
-                    </li>
-                    <li class="menu-item">
-                        <a href="{{ route('admin.traceability.index') }}"
-                            class="menu-link {{ request()->routeIs('admin.traceability.*') ? 'active' : '' }}">
-                            <span class="menu-icon"><i class="bi bi-cpu-fill"></i></span>
-                            <span>Traceability Matrix</span>
-                        </a>
-                    </li>
-
-                    <li class="menu-heading">Inventory & Stock</li>
-                    <li class="menu-item">
-                        <a href="{{ route('admin.inventory.index') }}"
-                            class="menu-link {{ request()->routeIs('admin.inventory.*') ? 'active' : '' }}">
-                            <span class="menu-icon"><i class="bi bi-boxes"></i></span>
-                            <span>Master Inventory</span>
-                        </a>
-                    </li>
+                    @if (!request()->routeIs('admin.consumables.*'))
+                        <!-- Office Portal Navigation -->
+                        <li class="menu-heading">Office Management</li>
+                        <li class="menu-item">
+                            <a href="{{ route('admin.dashboard') }}"
+                                class="menu-link {{ request()->routeIs('admin.dashboard') ? 'active' : '' }}">
+                                <span class="menu-icon"><i class="bi bi-grid-1x2-fill"></i></span>
+                                <span>Dashboard</span>
+                            </a>
+                        </li>
+                        <li class="menu-item">
+                            <a href="{{ route('admin.incoming.index') }}"
+                                class="menu-link {{ request()->routeIs('admin.incoming.*') ? 'active' : '' }}">
+                                <span class="menu-icon"><i class="bi bi-box-arrow-in-down"></i></span>
+                                <span>Incoming Slips</span>
+                            </a>
+                        </li>
+                        <li class="menu-item">
+                            <a href="{{ route('admin.outgoing.index') }}"
+                                class="menu-link {{ request()->routeIs('admin.outgoing.*') ? 'active' : '' }}">
+                                <span class="menu-icon"><i class="bi bi-box-arrow-up-right"></i></span>
+                                <span>Outgoing Slips</span>
+                            </a>
+                        </li>
+                        <li class="menu-item">
+                            <a href="{{ route('admin.traceability.index') }}"
+                                class="menu-link {{ request()->routeIs('admin.traceability.*') ? 'active' : '' }}">
+                                <span class="menu-icon"><i class="bi bi-cpu-fill"></i></span>
+                                <span>Traceability Matrix</span>
+                            </a>
+                        </li>
+                        <li class="menu-item">
+                            <a href="{{ route('admin.inventory.index') }}"
+                                class="menu-link {{ request()->routeIs('admin.inventory.*') ? 'active' : '' }}">
+                                <span class="menu-icon"><i class="bi bi-boxes"></i></span>
+                                <span>Master Inventory</span>
+                            </a>
+                        </li>
+                    @else
+                        <!-- Consumable Portal Navigation -->
+                        <li class="menu-heading">Consumable Management</li>
+                        <li class="menu-item">
+                            <a href="{{ route('admin.consumables.index') }}"
+                                class="menu-link {{ request()->routeIs('admin.consumables.index') ? 'active' : '' }}">
+                                <span class="menu-icon"><i class="bi bi-table"></i></span>
+                                <span>Monthly Inventory</span>
+                            </a>
+                        </li>
+                        <li class="menu-item">
+                            <a href="{{ route('admin.consumables.logs.index') }}"
+                                class="menu-link {{ request()->routeIs('admin.consumables.logs.*') ? 'active' : '' }}">
+                                <span class="menu-icon"><i class="bi bi-clock-history"></i></span>
+                                <span>Daily In/Out Logs</span>
+                            </a>
+                        </li>
+                        <li class="menu-item">
+                            <a href="{{ route('admin.consumables.items.index') }}"
+                                class="menu-link {{ request()->routeIs('admin.consumables.items.*') ? 'active' : '' }}">
+                                <span class="menu-icon"><i class="bi bi-cart-check-fill"></i></span>
+                                <span>Consumable Items</span>
+                            </a>
+                        </li>
+                        <li class="menu-item">
+                            <a href="{{ route('admin.consumables.categories.index') }}"
+                                class="menu-link {{ request()->routeIs('admin.consumables.categories.*') ? 'active' : '' }}">
+                                <span class="menu-icon"><i class="bi bi-tags-fill"></i></span>
+                                <span>Categories Manager</span>
+                            </a>
+                        </li>
+                    @endif
 
                     <li class="menu-heading">Administration</li>
                     <li class="menu-item">

@@ -132,8 +132,46 @@ body {
     text-transform: uppercase;
 }
 
+.sidebar-portal-switch {
+    margin: 14px 14px 6px 14px;
+    padding: 4px;
+    background: rgba(0, 18, 53, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: var(--radius-md);
+    display: flex;
+    gap: 4px;
+}
+
+.portal-tab-btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 8px 6px;
+    font-size: 0.74rem;
+    font-weight: 700;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+    color: #94A3B8;
+    text-decoration: none;
+    border-radius: var(--radius-sm);
+    transition: all 0.25s ease;
+}
+
+.portal-tab-btn:hover {
+    color: #FFFFFF;
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.portal-tab-btn.active {
+    background: var(--dftm-accent);
+    color: #FFFFFF;
+    box-shadow: 0 2px 10px rgba(2, 132, 199, 0.45);
+}
+
 .sidebar-menu {
-    padding: 20px 14px;
+    padding: 12px 14px;
     flex: 1;
     overflow-y: auto;
     list-style: none;
@@ -1083,3 +1121,87 @@ body.sidebar-collapsed .app-main {
         grid-template-columns: 1fr !important;
     }
 }
+
+/* =========================================================
+ * Pagination System Styling
+ * ========================================================= */
+.card-footer nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.pagination {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.page-item {
+    margin: 0;
+}
+
+.page-link,
+.page-item .page-link,
+nav[role="navigation"] a,
+nav[role="navigation"] span {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 6px 12px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--dftm-slate);
+    text-decoration: none;
+    background: #FFFFFF;
+    border: 1px solid var(--dftm-border);
+    border-radius: var(--radius-sm);
+    min-width: 34px;
+    height: 34px;
+    transition: all 0.2s ease;
+}
+
+.page-item.active .page-link,
+.page-link.active,
+nav[role="navigation"] span[aria-current="page"],
+nav[role="navigation"] span[aria-current="page"] span {
+    background: var(--dftm-accent) !important;
+    color: #FFFFFF !important;
+    border-color: var(--dftm-accent) !important;
+    font-weight: 700;
+    box-shadow: 0 2px 6px rgba(2, 132, 199, 0.35);
+}
+
+.page-item .page-link:hover,
+nav[role="navigation"] a:hover {
+    background: #F8FAFC;
+    color: var(--dftm-navy);
+    border-color: #CBD5E1;
+    transform: translateY(-1px);
+}
+
+.page-item.disabled .page-link {
+    color: #CBD5E1;
+    background: #F8FAFC;
+    border-color: var(--dftm-border);
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+/* Prevent giant Laravel SVGs from expanding */
+nav svg,
+.pagination svg {
+    width: 14px !important;
+    height: 14px !important;
+    max-width: 14px !important;
+    max-height: 14px !important;
+    display: inline-block !important;
+    vertical-align: middle;
+}
+

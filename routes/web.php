@@ -9,6 +9,9 @@ use App\Http\Controllers\Admin\OutgoingController as AdminOutgoingController;
 use App\Http\Controllers\Admin\InventoryController as AdminInventoryController;
 use App\Http\Controllers\Admin\TraceabilityController as AdminTraceabilityController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
+use App\Http\Controllers\Admin\ConsumableInventoryController as AdminConsumableInventoryController;
+use App\Http\Controllers\Admin\ConsumableCategoryController as AdminConsumableCategoryController;
+use App\Http\Controllers\Admin\ConsumableItemController as AdminConsumableItemController;
 
 use App\Http\Controllers\Encoder\DashboardController as EncoderDashboardController;
 use App\Http\Controllers\Encoder\IncomingController as EncoderIncomingController;
@@ -90,6 +93,30 @@ Route::middleware(['admin'])->prefix('admin')->name('admin.')->group(function ()
     Route::post('/users', [AdminUserController::class, 'store'])->name('users.store');
     Route::put('/users/{id}', [AdminUserController::class, 'update'])->name('users.update');
     Route::delete('/users/{id}', [AdminUserController::class, 'destroy'])->name('users.destroy');
+
+    // Consumable Portal Routes
+    Route::prefix('consumables')->name('consumables.')->group(function () {
+        // Monthly Ledger & Matrix
+        Route::get('/', [AdminConsumableInventoryController::class, 'index'])->name('index');
+        Route::post('/daily-log', [AdminConsumableInventoryController::class, 'storeDailyLog'])->name('dailyLog.store');
+        Route::post('/beginning-stock', [AdminConsumableInventoryController::class, 'updateBeginningStock'])->name('beginning.update');
+        Route::post('/carry-over', [AdminConsumableInventoryController::class, 'carryOverPreviousMonth'])->name('carryover');
+        Route::get('/logs', [AdminConsumableInventoryController::class, 'logs'])->name('logs.index');
+        Route::delete('/logs/{id}', [AdminConsumableInventoryController::class, 'destroyDailyLog'])->name('logs.destroy');
+        Route::get('/print', [AdminConsumableInventoryController::class, 'print'])->name('print');
+
+        // Categories CRUD
+        Route::get('/categories', [AdminConsumableCategoryController::class, 'index'])->name('categories.index');
+        Route::post('/categories', [AdminConsumableCategoryController::class, 'store'])->name('categories.store');
+        Route::put('/categories/{id}', [AdminConsumableCategoryController::class, 'update'])->name('categories.update');
+        Route::delete('/categories/{id}', [AdminConsumableCategoryController::class, 'destroy'])->name('categories.destroy');
+
+        // Items CRUD
+        Route::get('/items', [AdminConsumableItemController::class, 'index'])->name('items.index');
+        Route::post('/items', [AdminConsumableItemController::class, 'store'])->name('items.store');
+        Route::put('/items/{id}', [AdminConsumableItemController::class, 'update'])->name('items.update');
+        Route::delete('/items/{id}', [AdminConsumableItemController::class, 'destroy'])->name('items.destroy');
+    });
 });
 
 // ==========================================
