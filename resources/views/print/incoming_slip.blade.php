@@ -208,6 +208,12 @@
     <!-- Consolidated Report Grouped Per Model ("isang buo pero naka per model lang") -->
     @php
         $grandTotal = 0;
+        if (!isset($itemsByModel)) {
+            $sourceItems = isset($items) ? $items : (isset($allItems) ? $allItems : $transmittal->items);
+            $itemsByModel = $sourceItems->groupBy(function($item) {
+                return trim($item->model ?: 'Unassigned Model');
+            });
+        }
     @endphp
 
     @forelse($itemsByModel as $modelName => $modelItems)

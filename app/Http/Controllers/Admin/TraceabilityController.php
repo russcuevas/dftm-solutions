@@ -106,7 +106,9 @@ class TraceabilityController extends Controller
             $q->whereNull('batch_id');
         })->latest()->get();
 
-        return view('admin.traceability.create_batch', compact('nextBatchNo', 'availableItems', 'transmittals'));
+        $registeredClients = \App\Models\User::where('role', 'client')->pluck('company_name')->unique()->filter();
+
+        return view('admin.traceability.create_batch', compact('nextBatchNo', 'availableItems', 'transmittals', 'registeredClients'));
     }
 
     /**
@@ -121,11 +123,12 @@ class TraceabilityController extends Controller
         }
 
         $batch = DB::transaction(function () use ($request, $selectedItemIds) {
-            $items = InventoryItem::whereIn('id', $selectedItemIds)->get();
+            $items = InventoryItem::whereIn('id', $selectedItemIds)->with('transmittal')->get();
             $firstItem = $items->first();
 
             $batchNo = $request->input('batch_no') ?: ('BATCH ' . (Batch::count() + 1));
-            $companyName = $request->input('company_name') ?: ($firstItem?->company_name ?? 'DFTM DIGITAL SOLUTIONS');
+            $resolvedCompany = $firstItem?->company_name ?: ($firstItem?->transmittal?->company_name ?? null);
+            $companyName = $request->filled('company_name') ? trim($request->input('company_name')) : ($resolvedCompany ?: 'DFTM DIGITAL SOLUTIONS');
             $brand = $request->input('brand') ?: ($firstItem?->brand ?? null);
             $model = $request->input('model') ?: ($firstItem?->model ?? null);
             $dateDelivered = $request->input('date_delivered', now()->format('Y-m-d'));
@@ -146,10 +149,12 @@ class TraceabilityController extends Controller
 
             $oldBatchIds = $items->pluck('batch_id')->filter()->unique();
 
-            // Assign batch to items
+            // Assign batch to items and ensure company_name is populated
             foreach ($items as $idx => $item) {
+                $targetCompany = $item->company_name ?: ($companyName !== 'DFTM DIGITAL SOLUTIONS' ? $companyName : ($item->transmittal?->company_name ?? $companyName));
                 $item->update([
                     'batch_id' => $batch->id,
+                    'company_name' => $targetCompany,
                     'repair_status' => $item->repair_status ?: $defaultStatus,
                     'stock_status' => 'IN_STOCK',
                 ]);

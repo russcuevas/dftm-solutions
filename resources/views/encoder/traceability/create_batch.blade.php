@@ -33,6 +33,11 @@
                     <label class="form-label">Company Name</label>
                     <input type="text" name="company_name" list="companySuggestions" class="form-control" placeholder="Enter Company Name" value="{{ old('company_name') }}">
                     <datalist id="companySuggestions">
+                        @if(isset($registeredClients))
+                            @foreach($registeredClients as $rc)
+                                <option value="{{ $rc }}">
+                            @endforeach
+                        @endif
                         <option value="DFTM DIGITAL SOLUTIONS">
                         <option value="CONVERGE ICT">
                         <option value="PLDT / SMART">
@@ -144,7 +149,7 @@
                                        data-transmittal-id="{{ $item->transmittal_id }}"
                                        data-brand="{{ $item->brand }}"
                                        data-model="{{ $item->model }}"
-                                       data-company="{{ $item->company_name }}"
+                                       data-company="{{ $item->company_name ?: ($item->transmittal?->company_name ?? '') }}"
                                        style="accent-color: var(--dftm-navy); transform: scale(1.2); cursor: pointer;">
                             </td>
                             <td><span class="mono" style="font-weight: 700; color: var(--dftm-navy);">{{ $item->serial_number ?? '-' }}</span></td>
@@ -198,8 +203,22 @@ document.addEventListener('DOMContentLoaded', function() {
     const quickSearch = document.getElementById('quickUnitSearch');
 
     function updateCount() {
-        const checked = table.querySelectorAll('.unit-checkbox:checked').length;
-        countBadge.textContent = `${checked} Selected`;
+        const checkedBoxes = table.querySelectorAll('.unit-checkbox:checked');
+        countBadge.textContent = `${checkedBoxes.length} Selected`;
+
+        // Auto-fill company_name, brand, model from first selected item if empty
+        if (checkedBoxes.length > 0) {
+            const first = checkedBoxes[0];
+            const c = first.getAttribute('data-company');
+            const b = first.getAttribute('data-brand');
+            const m = first.getAttribute('data-model');
+            const companyInput = document.querySelector('[name="company_name"]');
+            const brandInput = document.querySelector('[name="brand"]');
+            const modelInput = document.querySelector('[name="model"]');
+            if (c && companyInput && !companyInput.value) companyInput.value = c;
+            if (b && brandInput && !brandInput.value) brandInput.value = b;
+            if (m && modelInput && !modelInput.value) modelInput.value = m;
+        }
     }
 
     function filterRows() {

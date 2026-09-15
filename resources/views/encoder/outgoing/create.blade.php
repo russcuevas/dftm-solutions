@@ -32,6 +32,11 @@
                     <label class="form-label">Company Name</label>
                     <input type="text" name="company_name" id="outgoingCompany" list="outgoingCompanySuggestions" class="form-control" placeholder="Enter Company Name (Optional)" value="{{ old('company_name') }}">
                     <datalist id="outgoingCompanySuggestions">
+                        @if(isset($registeredClients))
+                            @foreach($registeredClients as $rc)
+                                <option value="{{ $rc }}">
+                            @endforeach
+                        @endif
                         <option value="DFTM DIGITAL SOLUTIONS">
                         <option value="CONVERGE ICT">
                         <option value="PLDT / SMART">

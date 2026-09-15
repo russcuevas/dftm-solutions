@@ -45,7 +45,9 @@ class OutgoingController extends Controller
         $batches = Batch::where('in_stock_quantity', '>', 0)->get();
         $selectedBatchId = $request->input('batch_id');
 
-        return view('admin.outgoing.create', compact('slipNo', 'availableItems', 'batches', 'selectedBatchId'));
+        $registeredClients = \App\Models\User::where('role', 'client')->pluck('company_name')->unique()->filter();
+
+        return view('admin.outgoing.create', compact('slipNo', 'availableItems', 'batches', 'selectedBatchId', 'registeredClients'));
     }
 
     public function store(Request $request)
@@ -58,12 +60,13 @@ class OutgoingController extends Controller
 
         $slip = DB::transaction(function () use ($request, $selectedItemIds) {
             $slipNo = $request->input('slip_no') ?: ('ORS-' . date('Ymd') . '-' . str_pad(OutgoingSlip::count() + 1, 3, '0', STR_PAD_LEFT));
-            $items = InventoryItem::whereIn('id', $selectedItemIds)->get();
+            $items = InventoryItem::whereIn('id', $selectedItemIds)->with(['batch', 'transmittal'])->get();
 
             $firstItem = $items->first();
             $brand = $request->input('brand') ?: ($firstItem?->brand ?? null);
             $model = $request->input('model') ?: ($firstItem?->model ?? null);
-            $companyName = $request->input('company_name') ?: ($firstItem?->company_name ?? null);
+            $resolvedCompany = $firstItem?->company_name ?: ($firstItem?->transmittal?->company_name ?? ($firstItem?->batch?->company_name ?? null));
+            $companyName = $request->filled('company_name') ? trim($request->input('company_name')) : ($resolvedCompany ?: null);
             $batchNo = $request->input('batch_no') ?: ($firstItem?->batch?->batch_no ?? null);
             $dateDelivered = $request->input('date_delivered', now()->format('Y-m-d'));
 
@@ -384,20 +387,31 @@ class OutgoingController extends Controller
     public function release(Request $request)
     {
         $batchId = $request->input('batch_id');
-        $batch = Batch::with('items')->findOrFail($batchId);
+        $batch = Batch::with(['items.transmittal'])->findOrFail($batchId);
 
         $dateReleased = $request->input('date_released', now()->format('Y-m-d'));
         $siNumber = $request->input('si_number');
         $drNumber = $request->input('dr_number');
-        $customerName = $request->input('customer_name', $batch->company_name);
 
-        DB::transaction(function() use ($batch, $dateReleased, $siNumber, $drNumber, $customerName) {
+        $batchCompany = $batch->company_name;
+        if (!$batchCompany || strtoupper(trim($batchCompany)) === 'DFTM DIGITAL SOLUTIONS') {
+            $firstItem = $batch->items->first();
+            $resolved = $firstItem?->company_name ?: ($firstItem?->transmittal?->company_name ?? null);
+            if ($resolved) {
+                $batchCompany = $resolved;
+                $batch->update(['company_name' => $batchCompany]);
+            }
+        }
+
+        $customerName = $request->input('customer_name', $batchCompany);
+
+        DB::transaction(function() use ($batch, $batchCompany, $dateReleased, $siNumber, $drNumber, $customerName) {
             $slipNo = 'ORS-' . date('Ymd') . '-' . str_pad(OutgoingSlip::count() + 1, 3, '0', STR_PAD_LEFT);
 
             $slip = OutgoingSlip::create([
                 'slip_no' => $slipNo,
                 'batch_no' => $batch->batch_no,
-                'company_name' => $batch->company_name,
+                'company_name' => $batchCompany,
                 'customer_name' => $customerName,
                 'date_delivered' => $batch->date_delivered,
                 'date_released' => $dateReleased,

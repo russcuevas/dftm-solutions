@@ -5,16 +5,19 @@ namespace App\Http\Controllers\Client;
 use App\Http\Controllers\Controller;
 use App\Models\Transmittal;
 use App\Models\InventoryItem;
+use App\Traits\ClientScopedQueries;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class IncomingController extends Controller
 {
+    use ClientScopedQueries;
+
     public function index(Request $request)
     {
         $companyName = Auth::user()->company_name;
 
-        $query = Transmittal::where('company_name', $companyName)->with('items')->latest();
+        $query = $this->getClientTransmittalsQuery($companyName)->with('items')->latest();
 
         if ($request->filled('search')) {
             $search = trim($request->input('search'));
@@ -43,25 +46,46 @@ class IncomingController extends Controller
         }])->findOrFail($id);
 
         // Security check: client can only view their own transmittal
-        if ($transmittal->company_name !== $companyName) {
+        $cleanClientCompany = strtolower(trim($companyName));
+        $cleanTransmittalCompany = strtolower(trim($transmittal->company_name ?? ''));
+        if ($cleanClientCompany !== $cleanTransmittalCompany && 
+            !str_contains($cleanTransmittalCompany, $cleanClientCompany) &&
+            !str_contains($cleanClientCompany, $cleanTransmittalCompany)) {
             abort(403, 'Unauthorized access: You cannot view transmittals belonging to other companies.');
         }
 
         return view('client.incoming.show', compact('transmittal'));
     }
 
-    public function print($id)
+    public function print(Request $request, $id)
     {
         $companyName = Auth::user()->company_name;
 
-        $transmittal = Transmittal::with('items')->findOrFail($id);
+        $transmittal = Transmittal::with(['items', 'encoder'])->findOrFail($id);
 
-        if ($transmittal->company_name !== $companyName) {
+        // Security check: client can only view their own transmittal
+        $cleanClientCompany = strtolower(trim($companyName));
+        $cleanTransmittalCompany = strtolower(trim($transmittal->company_name ?? ''));
+        if ($cleanClientCompany !== $cleanTransmittalCompany && 
+            !str_contains($cleanTransmittalCompany, $cleanClientCompany) &&
+            !str_contains($cleanClientCompany, $cleanTransmittalCompany)) {
             abort(403, 'Unauthorized access to transmittal report.');
         }
 
-        $items = $transmittal->items()->orderBy('item_no', 'asc')->get();
+        $filterModel = $request->query('model');
 
-        return view('print.incoming_slip', compact('transmittal', 'items'));
+        $query = $transmittal->items();
+        if ($filterModel) {
+            $query->where('model', $filterModel);
+        }
+
+        $allItems = $query->orderBy('model')->orderBy('item_no')->get();
+
+        // Group items by model for clear breakdown
+        $itemsByModel = $allItems->groupBy(function($item) {
+            return trim($item->model ?: 'Unassigned Model');
+        });
+
+        return view('print.incoming_slip', compact('transmittal', 'itemsByModel', 'allItems', 'filterModel'));
     }
 }

@@ -5,23 +5,29 @@ namespace App\Http\Controllers\Client;
 use App\Http\Controllers\Controller;
 use App\Models\Batch;
 use App\Models\InventoryItem;
+use App\Traits\ClientScopedQueries;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class TraceabilityController extends Controller
 {
+    use ClientScopedQueries;
+
     public function index(Request $request)
     {
         $companyName = Auth::user()->company_name;
 
-        $batches = Batch::where('company_name', $companyName)->with('items')->latest()->get();
+        // Auto-heal any batches/items with missing or DFTM company_name if their transmittal belongs to client
+        $this->autoHealClientOwnership($companyName);
+
+        $batches = $this->getClientBatchesQuery($companyName)->with('items')->latest()->get();
 
         $activeBatchId = $request->input('batch_id');
         if (!$activeBatchId && $batches->isNotEmpty()) {
             $activeBatchId = $batches->first()->id;
         }
 
-        $query = InventoryItem::where('company_name', $companyName)
+        $query = $this->getClientItemsQuery($companyName)
             ->with(['batch', 'transmittal'])
             ->orderBy('item_no', 'asc')
             ->orderBy('id', 'asc');
@@ -59,11 +65,11 @@ class TraceabilityController extends Controller
         $items = $query->paginate(50)->withQueryString();
 
         $selectedBatch = (!empty($activeBatchId) && $activeBatchId !== 'all')
-            ? Batch::where('company_name', $companyName)->with('items')->find($activeBatchId)
+            ? $this->getClientBatchesQuery($companyName)->with('items')->find($activeBatchId)
             : null;
 
         // Metrics for selected batch
-        $metricsQuery = InventoryItem::where('company_name', $companyName);
+        $metricsQuery = $this->getClientItemsQuery($companyName);
         if ($selectedBatch) {
             $metricsQuery->where('batch_id', $selectedBatch->id);
         } else {
@@ -94,7 +100,7 @@ class TraceabilityController extends Controller
         $companyName = Auth::user()->company_name;
         $batchId = $request->input('batch_id');
 
-        $batchObj = Batch::where('company_name', $companyName)->findOrFail($batchId);
+        $batchObj = $this->getClientBatchesQuery($companyName)->findOrFail($batchId);
         $items = $batchObj->items()->orderBy('item_no', 'asc')->get();
 
         $slipObj = null;

@@ -162,10 +162,15 @@
                                 <span class="badge badge-stock">{{ $slip->total_quantity ?? $slip->items->count() }} Units</span>
                             </td>
                             <td style="text-align: center;">
-                                @if($slip->batch_id)
-                                    <a href="{{ route('client.outgoing.print', ['batch_id' => $slip->batch_id, 'si_number' => $slip->si_number, 'dr_number' => $slip->dr_number, 'date_released' => $slip->date_released?->format('Y-m-d')]) }}" target="_blank" class="btn btn-outline btn-sm">
+                                @php
+                                    $slipBatchId = $slip->batch_id ?? ($batches->firstWhere('batch_no', $slip->batch_no)?->id ?? $slip->items->first()?->batch_id);
+                                @endphp
+                                @if($slipBatchId)
+                                    <a href="{{ route('client.outgoing.print', ['batch_id' => $slipBatchId, 'si_number' => $slip->si_number, 'dr_number' => $slip->dr_number, 'date_released' => $slip->date_released?->format('Y-m-d')]) }}" target="_blank" class="btn btn-outline btn-sm">
                                         <i class="bi bi-printer"></i> Print Slip
                                     </a>
+                                @else
+                                    <span style="color: #94A3B8; font-size: 0.8rem;">Recorded</span>
                                 @endif
                             </td>
                         </tr>
