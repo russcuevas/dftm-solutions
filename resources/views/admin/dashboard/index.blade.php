@@ -112,15 +112,15 @@
 <div class="dashboard-main-grid">
     <!-- Left Column: Recent Transmittals, Batches & Outgoing Slips -->
     <div style="display: flex; flex-direction: column; gap: 24px;">
-        <!-- Recent Incoming Transmittals -->
+        <!-- Recent Incoming -->
         <div class="card">
             <div class="card-header">
                 <div>
-                    <div class="card-title"><i class="bi bi-box-arrow-in-down"></i> Recent Incoming Transmittals</div>
-                    <div class="card-subtitle">Latest shipments received and encoded</div>
+                    <div class="card-title"><i class="bi bi-box-arrow-in-down"></i> Recent Incoming</div>
+                    <div class="card-subtitle">Latest repair slips received and encoded</div>
                 </div>
                 <a href="{{ route('admin.incoming.create') }}" class="btn btn-primary btn-sm">
-                    <i class="bi bi-plus-lg"></i> New Transmittal
+                    <i class="bi bi-plus-lg"></i> +Create Incoming
                 </a>
             </div>
             <div class="table-responsive">
@@ -157,8 +157,8 @@
                         <tr>
                             <td colspan="6" style="text-align: center; color: var(--dftm-slate); padding: 32px 16px;">
                                 <div style="font-size: 2rem; color: #CBD5E1; margin-bottom: 8px;"><i class="bi bi-inboxes"></i></div>
-                                <div style="font-weight: 600; font-size: 0.92rem; color: var(--dftm-navy);">No incoming transmittals recorded yet</div>
-                                <div style="font-size: 0.8rem; color: var(--dftm-slate-light); margin-top: 4px;">Incoming shipments will be listed here once encoded.</div>
+                                <div style="font-weight: 600; font-size: 0.92rem; color: var(--dftm-navy);">No incoming repair slips recorded yet</div>
+                                <div style="font-size: 0.8rem; color: var(--dftm-slate-light); margin-top: 4px;">Incoming repair slips will be listed here once encoded.</div>
                             </td>
                         </tr>
                         @endforelse

@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
-@section('title', 'Scan Incoming Transmittal - ' . $transmittal->transmittal_no)
-@section('page_title', 'Incoming Barcode Scanner & Transmittal')
+@section('title', 'Scan Incoming Repair Slip - ' . $transmittal->transmittal_no)
+@section('page_title', 'Incoming Barcode Scanner & Repair Slip')
 
 @section('content')
     <style>
@@ -145,7 +145,7 @@
         <div class="card-header">
             <div>
                 <div class="card-title" style="display: flex; align-items: center; gap: 10px;">
-                    <i class="bi bi-upc-scan"></i> Transmittal: <span class="mono"
+                    <i class="bi bi-upc-scan"></i> Repair Slip: <span class="mono"
                         style="color: var(--dftm-accent);">{{ $transmittal->transmittal_no }}</span>
                 </div>
                 <div class="card-subtitle">
@@ -204,7 +204,7 @@
                         value="{{ old('date_received', $transmittal->date_received ? $transmittal->date_received->format('Y-m-d') : '') }}">
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Default Brand</label>
+                    <label class="form-label">Brand</label>
                     <input type="text" name="brand" list="brandSuggestions"
                         class="form-control transmittal-header-input" value="{{ old('brand', $transmittal->brand) }}"
                         placeholder="e.g. HUAWEI">
@@ -217,7 +217,7 @@
                     </datalist>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Default Model</label>
+                    <label class="form-label">Model</label>
                     <input type="text" name="model" class="form-control transmittal-header-input"
                         value="{{ old('model', $transmittal->model) }}" placeholder="e.g. EG8145V5">
                 </div>
@@ -283,13 +283,12 @@
 
                 <!-- Column Headers -->
                 <div
-                    style="display: grid; grid-template-columns: 40px 1.5fr 1.5fr 1fr 1fr 1fr 30px 40px; gap: 8px; padding: 8px 12px; font-size: 0.74rem; font-weight: 800; color: var(--dftm-navy); text-transform: uppercase; background: #F1F5F9; border-radius: 6px 6px 0 0;">
+                    style="display: grid; grid-template-columns: 40px 2fr 2fr 1.2fr 1.2fr 30px 40px; gap: 8px; padding: 8px 12px; font-size: 0.74rem; font-weight: 800; color: var(--dftm-navy); text-transform: uppercase; background: #F1F5F9; border-radius: 6px 6px 0 0;">
                     <div style="text-align: center;">NO.</div>
                     <div>Serial Number (Scan Barcode)</div>
                     <div>MAC Address</div>
                     <div>Model</div>
                     <div>Brand</div>
-                    <div>Box No.</div>
                     <div style="text-align: center;"></div>
                     <div style="text-align: center;">Action</div>
                 </div>
@@ -297,7 +296,7 @@
                 <div id="subtableRows">
                     @forelse($transmittal->items as $item)
                         <div class="subtable-row" data-item-id="{{ $item->id }}"
-                            style="grid-template-columns: 40px 1.5fr 1.5fr 1fr 1fr 1fr 30px 40px; gap: 8px;">
+                            style="grid-template-columns: 40px 2fr 2fr 1.2fr 1.2fr 30px 40px; gap: 8px;">
                             <input type="hidden" name="item_id[]" class="row-item-id" value="{{ $item->id }}">
                             <div class="subtable-row-num">{{ $loop->iteration }}</div>
                             <div>
@@ -310,15 +309,13 @@
                             </div>
                             <div>
                                 <input type="text" name="row_model[]" class="form-control row-model"
-                                    value="{{ $item->model }}" placeholder="Model (e.g. EG8145V5)">
+                                    value="{{ $item->model ?: $transmittal->model }}" placeholder="Model" readonly tabindex="-1"
+                                    style="background: #F8FAFC; color: #475569; border-color: #E2E8F0; cursor: default;">
                             </div>
                             <div>
                                 <input type="text" name="row_brand[]" class="form-control row-brand"
-                                    value="{{ $item->brand }}" placeholder="Brand (e.g. HUAWEI)">
-                            </div>
-                            <div>
-                                <input type="text" name="box_no[]" class="form-control row-box"
-                                    value="{{ $item->box_no }}" placeholder="Box No">
+                                    value="{{ $item->brand ?: $transmittal->brand }}" placeholder="Brand" readonly tabindex="-1"
+                                    style="background: #F8FAFC; color: #475569; border-color: #E2E8F0; cursor: default;">
                             </div>
                             <div class="row-status-indicator"
                                 style="display: flex; align-items: center; justify-content: center; font-size: 0.9rem;">
@@ -333,7 +330,7 @@
                         </div>
                     @empty
                         <div class="subtable-row"
-                            style="grid-template-columns: 40px 1.5fr 1.5fr 1fr 1fr 1fr 30px 40px; gap: 8px;">
+                            style="grid-template-columns: 40px 2fr 2fr 1.2fr 1.2fr 30px 40px; gap: 8px;">
                             <input type="hidden" name="item_id[]" class="row-item-id" value="">
                             <div class="subtable-row-num">1</div>
                             <div><input type="text" name="serial_number[]" class="form-control mono row-sn"
@@ -341,11 +338,11 @@
                             <div><input type="text" name="mac_address[]" class="form-control mono row-mac"
                                     placeholder="Scan MAC Address"></div>
                             <div><input type="text" name="row_model[]" class="form-control row-model"
-                                    value="{{ $transmittal->model }}" placeholder="Model"></div>
+                                    value="{{ $transmittal->model }}" placeholder="Model" readonly tabindex="-1"
+                                    style="background: #F8FAFC; color: #475569; border-color: #E2E8F0; cursor: default;"></div>
                             <div><input type="text" name="row_brand[]" class="form-control row-brand"
-                                    value="{{ $transmittal->brand }}" placeholder="Brand"></div>
-                            <div><input type="text" name="box_no[]" class="form-control row-box"
-                                    placeholder="Box No"></div>
+                                    value="{{ $transmittal->brand }}" placeholder="Brand" readonly tabindex="-1"
+                                    style="background: #F8FAFC; color: #475569; border-color: #E2E8F0; cursor: default;"></div>
                             <div class="row-status-indicator"
                                 style="display: flex; align-items: center; justify-content: center; font-size: 0.9rem;">
                             </div>
@@ -497,10 +494,21 @@
                 }
             }
 
-            // Header auto-save
+            // Header auto-save & dynamic propagation to table rows
             headerInputs.forEach(input => {
                 input.addEventListener('change', function() {
                     setSyncStatus('saving');
+                    const brandVal = document.querySelector('[name="brand"]')?.value || '';
+                    const modelVal = document.querySelector('[name="model"]')?.value || '';
+
+                    // Sync table row non-editable brand and model
+                    if (this.name === 'brand') {
+                        document.querySelectorAll('.row-brand').forEach(el => el.value = brandVal);
+                    }
+                    if (this.name === 'model') {
+                        document.querySelectorAll('.row-model').forEach(el => el.value = modelVal);
+                    }
+
                     const data = {
                         _token: csrfToken,
                         transmittal_no: document.querySelector('[name="transmittal_no"]')
@@ -509,8 +517,8 @@
                             '',
                         date_received: document.querySelector('[name="date_received"]')
                             ?.value || '',
-                        brand: document.querySelector('[name="brand"]')?.value || '',
-                        model: document.querySelector('[name="model"]')?.value || '',
+                        brand: brandVal,
+                        model: modelVal,
                         status: document.querySelector('[name="status"]')?.value || '',
                         notes: document.querySelector('[name="notes"]')?.value || '',
                     };
@@ -535,17 +543,17 @@
                 const macInput = row.querySelector('.row-mac');
                 const modelInput = row.querySelector('.row-model');
                 const brandInput = row.querySelector('.row-brand');
-                const boxInput = row.querySelector('.row-box');
                 const statusIndicator = row.querySelector('.row-status-indicator');
 
                 const itemId = itemIdInput ? itemIdInput.value : '';
                 const sn = snInput ? snInput.value.trim() : '';
                 const mac = macInput ? macInput.value.trim() : '';
-                const model = modelInput ? modelInput.value.trim() : '';
-                const brand = brandInput ? brandInput.value.trim() : '';
-                const box = boxInput ? boxInput.value.trim() : '';
+                const headerBrand = document.querySelector('[name="brand"]')?.value || '';
+                const headerModel = document.querySelector('[name="model"]')?.value || '';
+                const model = (modelInput ? modelInput.value.trim() : '') || headerModel;
+                const brand = (brandInput ? brandInput.value.trim() : '') || headerBrand;
 
-                if (!itemId && !sn && !mac && !box) return {
+                if (!itemId && !sn && !mac) return {
                     success: false,
                     skipped: true
                 };
@@ -570,8 +578,7 @@
                             serial_number: sn,
                             mac_address: mac,
                             model: model,
-                            brand: brand,
-                            box_no: box
+                            brand: brand
                         })
                     });
 
@@ -668,10 +675,9 @@
                 const macInput = row.querySelector('.row-mac');
                 const modelInput = row.querySelector('.row-model');
                 const brandInput = row.querySelector('.row-brand');
-                const boxInput = row.querySelector('.row-box');
                 let debounceTimer = null;
 
-                const allInputs = [snInput, macInput, modelInput, brandInput, boxInput].filter(Boolean);
+                const allInputs = [snInput, macInput].filter(Boolean);
 
                 allInputs.forEach(input => {
                     input.addEventListener('input', function() {
@@ -795,7 +801,12 @@
                 const rowDiv = document.createElement('div');
                 rowDiv.className = 'subtable-row live-row-remote';
                 rowDiv.setAttribute('data-item-id', item.id);
-                rowDiv.style.cssText = 'grid-template-columns: 40px 1.5fr 1.5fr 1fr 1fr 1fr 30px 40px; gap: 8px;';
+                rowDiv.style.cssText = 'grid-template-columns: 40px 2fr 2fr 1.2fr 1.2fr 30px 40px; gap: 8px;';
+                const headerBrand = document.querySelector('[name="brand"]')?.value || '';
+                const headerModel = document.querySelector('[name="model"]')?.value || '';
+                const brandVal = item.brand || headerBrand;
+                const modelVal = item.model || headerModel;
+
                 rowDiv.innerHTML = `
                     <input type="hidden" name="item_id[]" class="row-item-id" value="${item.id}">
                     <div class="subtable-row-num">${item.item_no}</div>
@@ -806,13 +817,10 @@
                         <input type="text" name="mac_address[]" class="form-control mono row-mac" value="${item.mac_address || ''}" placeholder="Scan MAC Address">
                     </div>
                     <div>
-                        <input type="text" name="row_model[]" class="form-control row-model" value="${item.model || ''}" placeholder="Model">
+                        <input type="text" name="row_model[]" class="form-control row-model" value="${modelVal}" placeholder="Model" readonly tabindex="-1" style="background: #F8FAFC; color: #475569; border-color: #E2E8F0; cursor: default;">
                     </div>
                     <div>
-                        <input type="text" name="row_brand[]" class="form-control row-brand" value="${item.brand || ''}" placeholder="Brand">
-                    </div>
-                    <div>
-                        <input type="text" name="box_no[]" class="form-control row-box" value="${item.box_no || ''}" placeholder="Box No">
+                        <input type="text" name="row_brand[]" class="form-control row-brand" value="${brandVal}" placeholder="Brand" readonly tabindex="-1" style="background: #F8FAFC; color: #475569; border-color: #E2E8F0; cursor: default;">
                     </div>
                     <div class="row-status-indicator" style="display: flex; align-items: center; justify-content: center; font-size: 0.9rem;">
                         ${item.serial_number ? '<i class="bi bi-check-lg" style="color: #10B981; font-weight: 800;"></i>' : ''}
@@ -831,13 +839,6 @@
                 const defaultBrand = document.querySelector('[name="brand"]')?.value || '';
                 const defaultModel = document.querySelector('[name="model"]')?.value || '';
 
-                let defaultBox = '';
-                const lastRow = container.querySelector('.subtable-row:last-child');
-                if (lastRow) {
-                    const lb = lastRow.querySelector('.row-box');
-                    if (lb && lb.value.trim()) defaultBox = lb.value.trim();
-                }
-
                 if (btnGenerateCustomRows) btnGenerateCustomRows.disabled = true;
                 if (btnLiveAddSingleRow) btnLiveAddSingleRow.disabled = true;
                 setSyncStatus('saving');
@@ -854,8 +855,7 @@
                             _token: csrfToken,
                             quantity: quantity,
                             brand: defaultBrand,
-                            model: defaultModel,
-                            box_no: defaultBox
+                            model: defaultModel
                         })
                     });
 
@@ -1085,13 +1085,10 @@
                             if (row !== focusedRow) {
                                 const snInput = row.querySelector('.row-sn');
                                 const macInput = row.querySelector('.row-mac');
-                                const boxInput = row.querySelector('.row-box');
                                 if (snInput && snInput.value !== sItem.serial_number) snInput.value = sItem
                                     .serial_number;
                                 if (macInput && macInput.value !== sItem.mac_address) macInput.value = sItem
                                     .mac_address;
-                                if (boxInput && boxInput.value !== sItem.box_no) boxInput.value = sItem
-                                    .box_no;
                             }
                             serverMap.delete(rowItemId);
                         }
@@ -1103,38 +1100,7 @@
                     serverMap.forEach(newItem => {
                         if (deletedIds.has(String(newItem.id))) return;
 
-                        const rowDiv = document.createElement('div');
-                        rowDiv.className = 'subtable-row live-row-remote';
-                        rowDiv.setAttribute('data-item-id', newItem.id);
-                        rowDiv.style.cssText =
-                            'grid-template-columns: 40px 1.5fr 1.5fr 1fr 1fr 1fr 30px 40px; gap: 8px;';
-                        rowDiv.innerHTML = `
-                            <input type="hidden" name="item_id[]" class="row-item-id" value="${newItem.id}">
-                            <div class="subtable-row-num">${newItem.item_no}</div>
-                            <div>
-                                <input type="text" name="serial_number[]" class="form-control mono row-sn" value="${newItem.serial_number}" placeholder="Scan Serial Number">
-                            </div>
-                            <div>
-                                <input type="text" name="mac_address[]" class="form-control mono row-mac" value="${newItem.mac_address}" placeholder="Scan MAC Address">
-                            </div>
-                            <div>
-                                <input type="text" name="row_model[]" class="form-control row-model" value="${newItem.model || ''}" placeholder="Model">
-                            </div>
-                            <div>
-                                <input type="text" name="row_brand[]" class="form-control row-brand" value="${newItem.brand || ''}" placeholder="Brand">
-                            </div>
-                            <div>
-                                <input type="text" name="box_no[]" class="form-control row-box" value="${newItem.box_no || ''}" placeholder="Box No">
-                            </div>
-                            <div class="row-status-indicator" style="display: flex; align-items: center; justify-content: center; font-size: 0.9rem;">
-                                <i class="bi bi-check-lg" style="color: #10B981; font-weight: 800;"></i>
-                            </div>
-                            <div style="display: flex; align-items: center; justify-content: center;">
-                                <button type="button" class="btn btn-outline btn-icon btn-remove-row" title="Delete Row" style="color: #DC2626; border-color: #FECACA;">
-                                    <i class="bi bi-trash"></i>
-                                </button>
-                            </div>
-                        `;
+                        const rowDiv = createRowElement(newItem);
                         container.appendChild(rowDiv);
                         attachRowListeners(rowDiv);
                     });

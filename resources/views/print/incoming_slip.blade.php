@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Incoming Transmittal Report - {{ $transmittal->transmittal_no }}</title>
+    <title>Incoming Repair Slip - {{ $transmittal->transmittal_no }}</title>
     <style>
         @page {
             size: A4 portrait;
@@ -14,7 +14,7 @@
         body {
             background: #F1F5F9;
             padding: 20px;
-            font-family: Arial, Calibri, 'Segoe UI', Tahoma, sans-serif;
+            font-family: Arial, Helvetica, sans-serif;
             color: #000000;
             font-size: 10.5pt;
             margin: 0;
@@ -58,11 +58,12 @@
 
         .brand-header {
             text-align: center;
-            margin-bottom: 8px;
+            margin-bottom: 12px;
         }
         .brand-header img {
-            height: 48px;
-            max-width: 240px;
+            height: 80px;
+            max-width: 460px;
+            width: auto;
             object-fit: contain;
             margin-bottom: 4px;
         }
@@ -81,37 +82,43 @@
             width: 100%;
             border-collapse: collapse;
             margin-bottom: 0;
+            font-family: Arial, Helvetica, sans-serif;
         }
         .excel-table th, .excel-table td {
             border: 1px solid #000000;
-            padding: 5px 8px;
+            padding: 6px 8px;
             font-size: 10pt;
             line-height: 1.3;
+            text-align: center;
         }
 
         .header-label {
             font-weight: 800;
             white-space: nowrap;
-            width: 20%;
+            width: 22%;
             background: #FFFFFF;
+            text-align: center;
         }
         .header-val {
             font-weight: 700;
-            width: 30%;
+            width: 28%;
+            text-align: center;
         }
 
         .model-banner {
-            text-align: left;
+            text-align: center;
             font-weight: 900;
             font-size: 11pt;
             letter-spacing: 0.5px;
             background: #F8FAFC;
-            padding: 6px 10px;
+            padding: 7px 10px;
             text-transform: uppercase;
             border: 1px solid #000000;
             margin-top: 14px;
             display: flex;
             justify-content: space-between;
+            align-items: center;
+            font-family: Arial, Helvetica, sans-serif;
         }
 
         .sub-header-row th {
@@ -122,30 +129,30 @@
         }
 
         .col-no {
-            width: 45px;
+            width: 50px;
             text-align: center;
             font-weight: bold;
         }
         .col-serial {
-            width: 42%;
-            font-family: 'Consolas', 'Courier New', monospace;
+            width: 48%;
+            font-family: Arial, Helvetica, sans-serif;
             font-size: 10pt;
+            font-weight: 700;
+            text-align: center;
         }
         .col-mac {
-            width: 42%;
-            font-family: 'Consolas', 'Courier New', monospace;
+            width: 48%;
+            font-family: Arial, Helvetica, sans-serif;
             font-size: 10pt;
-        }
-        .col-box {
-            width: 16%;
+            font-weight: 600;
             text-align: center;
-            font-size: 10pt;
         }
 
         @media print {
             body {
                 background: #FFFFFF;
                 padding: 0;
+                font-family: Arial, Helvetica, sans-serif !important;
             }
             .no-print {
                 display: none !important;
@@ -160,6 +167,7 @@
                 border: 1px solid #000000 !important;
                 -webkit-print-color-adjust: exact;
                 print-color-adjust: exact;
+                text-align: center;
             }
         }
     </style>
@@ -181,19 +189,19 @@
 </div>
 
 <div class="slip-wrapper">
-    <!-- Top Logo -->
+    <!-- Top Logo (Large & Prominent) -->
     <div class="brand-header">
         <img src="{{ asset('images/logo.png') }}" alt="DFTM Digital Solutions">
     </div>
 
     <!-- Main Title -->
-    <div class="slip-title">INCOMING TRANSMITTAL REPORT</div>
+    <div class="slip-title">INCOMING REPAIR SLIP</div>
 
     <!-- Header Information Block (Excel-Style) -->
     <table class="excel-table">
         <tr>
             <td class="header-label">TRANSMITTAL NO:</td>
-            <td class="header-val" style="font-family: monospace; font-size: 11pt;">{{ $transmittal->transmittal_no }}</td>
+            <td class="header-val" style="font-weight: 800; font-size: 11pt;">{{ $transmittal->transmittal_no }}</td>
             <td class="header-label">COMPANY NAME:</td>
             <td class="header-val">{{ $transmittal->company_name ?? 'DFTM DIGITAL SOLUTIONS' }}</td>
         </tr>
@@ -205,7 +213,7 @@
         </tr>
     </table>
 
-    <!-- Consolidated Report Grouped Per Model ("isang buo pero naka per model lang") -->
+    <!-- Consolidated Report Grouped Per Model -->
     @php
         $grandTotal = 0;
         if (!isset($itemsByModel)) {
@@ -234,7 +242,6 @@
                     <th class="col-no">NO.</th>
                     <th class="col-serial">SERIAL NUMBER</th>
                     <th class="col-mac">MAC ADDRESS</th>
-                    <th class="col-box">BOX NO.</th>
                 </tr>
             </thead>
             <tbody>
@@ -243,24 +250,23 @@
                     <td class="col-no">{{ $loop->iteration }}</td>
                     <td class="col-serial">{{ $item->serial_number ?? '-' }}</td>
                     <td class="col-mac">{{ $item->mac_address ?? '-' }}</td>
-                    <td class="col-box">{{ $item->box_no ?? '-' }}</td>
                 </tr>
                 @endforeach
             </tbody>
         </table>
     @empty
         <div style="text-align: center; padding: 24px; border: 1px solid #000000; margin-top: 14px;">
-            No units recorded for this transmittal.
+            No units recorded for this repair slip.
         </div>
     @endforelse
 
     <!-- Grand Summary Footer Block -->
     <table class="excel-table" style="margin-top: 16px;">
         <tr>
-            <td style="font-weight: 900; text-align: right; width: 75%; background: #F8FAFC;">
+            <td style="font-weight: 900; text-align: center; width: 70%; background: #F8FAFC;">
                 CONSOLIDATED GRAND TOTAL RECEIVED:
             </td>
-            <td style="font-weight: 900; text-align: center; width: 25%; font-size: 11pt; background: #F8FAFC;">
+            <td style="font-weight: 900; text-align: center; width: 30%; font-size: 11pt; background: #F8FAFC;">
                 {{ $transmittal->total_quantity }} PCS
             </td>
         </tr>

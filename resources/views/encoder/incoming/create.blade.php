@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
-@section('title', 'Encode Incoming Transmittal')
-@section('page_title', 'Encode Incoming Transmittal')
+@section('title', 'New Incoming Repair Slip')
+@section('page_title', 'Create Incoming Repair Slip')
 
 @section('content')
 <form action="{{ route('encoder.incoming.store') }}" method="POST" id="incomingForm">
@@ -10,8 +10,8 @@
     <div class="card">
         <div class="card-header">
             <div>
-                <div class="card-title"><i class="bi bi-file-earmark-plus-fill"></i> Incoming Transmittal Header</div>
-                <div class="card-subtitle">Enter transmittal details to start barcode scanning</div>
+                <div class="card-title"><i class="bi bi-file-earmark-plus-fill"></i> Incoming Repair Slip Header</div>
+                <div class="card-subtitle">Enter incoming repair slip details to start barcode scanning</div>
             </div>
             <div style="display: flex; align-items: center; gap: 12px;">
                 <button type="submit" class="btn btn-primary">
@@ -51,10 +51,10 @@
                 </div>
             </div>
 
-            <!-- Header row 2: Default Brand, Default Model, Status (Optional) -->
+            <!-- Header row 2: Brand, Model, Status (Optional) -->
             <div class="form-row">
                 <div class="form-group">
-                    <label class="form-label">Default Brand (Optional)</label>
+                    <label class="form-label">Brand</label>
                     <input type="text" name="brand" list="brandSuggestions" class="form-control" placeholder="e.g. HUAWEI / ZTE / SKYWORTH" value="{{ old('brand') }}">
                     <datalist id="brandSuggestions">
                         <option value="HUAWEI">
@@ -65,7 +65,7 @@
                     </datalist>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Default Model (Optional)</label>
+                    <label class="form-label">Model</label>
                     <input type="text" name="model" class="form-control" placeholder="e.g. EG8145V5 / ZXHN F670L" value="{{ old('model') }}">
                 </div>
                 <div class="form-group">

@@ -14,7 +14,7 @@
         body {
             background: #F1F5F9;
             padding: 20px;
-            font-family: Arial, Calibri, 'Segoe UI', Tahoma, sans-serif;
+            font-family: Arial, Helvetica, sans-serif;
             color: #000000;
             font-size: 10.5pt;
             margin: 0;
@@ -62,8 +62,8 @@
             margin-bottom: 12px;
         }
         .brand-header img {
-            height: 48px;
-            max-width: 240px;
+            height: 60px;
+            max-width: 360px;
             object-fit: contain;
             margin-bottom: 4px;
         }
@@ -82,12 +82,14 @@
             width: 100%;
             border-collapse: collapse;
             margin-bottom: 0;
+            font-family: Arial, Helvetica, sans-serif;
         }
         .excel-table th, .excel-table td {
             border: 1px solid #000000;
-            padding: 5px 8px;
+            padding: 6px 8px;
             font-size: 10pt;
             line-height: 1.3;
+            text-align: center;
         }
 
         .header-label {
@@ -95,10 +97,12 @@
             white-space: nowrap;
             width: 18%;
             background: #FFFFFF;
+            text-align: center;
         }
         .header-val {
             font-weight: 700;
             width: 32%;
+            text-align: center;
         }
 
         .batch-banner {
@@ -115,7 +119,7 @@
             font-weight: 800;
             text-align: center;
             background: #FFFFFF;
-            padding: 5px 8px;
+            padding: 6px 8px;
         }
 
         .col-no {
@@ -128,6 +132,7 @@
             body {
                 background: #FFFFFF;
                 padding: 0;
+                font-family: Arial, Helvetica, sans-serif !important;
             }
             .no-print {
                 display: none !important;
@@ -142,6 +147,7 @@
                 border: 1px solid #000000 !important;
                 -webkit-print-color-adjust: exact;
                 print-color-adjust: exact;
+                text-align: center;
             }
         }
     </style>
@@ -259,13 +265,13 @@
             @forelse($items as $idx => $item)
                 <tr>
                     <td class="col-no">{{ $idx + 1 }}</td>
-                    <td style="font-weight: 700; color: #00205B;">{{ $item->technical_diagnostic ?? '' }}</td>
-                    <td style="font-weight: 600;">{{ $item->replace_parts ?? '' }}</td>
+                    <td style="font-weight: 700; color: #00205B; text-align: center;">{{ $item->technical_diagnostic ?? '' }}</td>
+                    <td style="font-weight: 600; text-align: center;">{{ $item->replace_parts ?? '' }}</td>
                     <td style="text-align: center; font-weight: 800; color: {{ $item->repair_status === 'BER' ? '#DC2626' : ($item->repair_status === 'In process' ? '#D97706' : '#059669') }};">
                         {{ strtoupper($item->repair_status ?? 'In process') }}
                     </td>
-                    <td style="font-family: 'Consolas', monospace; font-weight: 700; color: #00205B;">{{ $item->serial_number ?? '' }}</td>
-                    <td style="font-family: 'Consolas', monospace;">{{ $item->mac_address ?? '' }}</td>
+                    <td style="font-weight: 700; color: #00205B; text-align: center;">{{ $item->serial_number ?? '' }}</td>
+                    <td style="text-align: center;">{{ $item->mac_address ?? '' }}</td>
                     <td style="text-align: center;">{{ $item->box_no ?? '' }}</td>
                 </tr>
             @empty

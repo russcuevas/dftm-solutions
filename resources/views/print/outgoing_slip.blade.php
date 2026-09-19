@@ -14,7 +14,7 @@
         body {
             background: #F8FAFC;
             padding: 20px;
-            font-family: Arial, Calibri, 'Segoe UI', Tahoma, sans-serif;
+            font-family: Arial, Helvetica, sans-serif;
             color: #000000;
             font-size: 10.5pt;
             margin: 0;
@@ -60,12 +60,14 @@
             width: 100%;
             border-collapse: collapse;
             margin-top: 0;
+            font-family: Arial, Helvetica, sans-serif;
         }
         .excel-table th, .excel-table td {
             border: 1px solid #000000;
             padding: 6px 8px;
             font-size: 10pt;
             line-height: 1.3;
+            text-align: center;
         }
         .excel-title-header {
             background: #00205B;
@@ -82,6 +84,7 @@
             font-weight: 800;
             background: #F8FAFC;
             width: 20%;
+            text-align: center;
         }
         .col-no {
             width: 45px;
@@ -96,13 +99,14 @@
         }
 
         @media print {
-            body { padding: 0; background: #FFFFFF; }
+            body { padding: 0; background: #FFFFFF; font-family: Arial, Helvetica, sans-serif !important; }
             .print-btn-bar { display: none; }
             .slip-wrapper { border: none; box-shadow: none; padding: 0; max-width: 100%; }
             .excel-table th, .excel-table td {
                 border: 1px solid #000000 !important;
                 -webkit-print-color-adjust: exact;
                 print-color-adjust: exact;
+                text-align: center;
             }
         }
     </style>
@@ -125,7 +129,7 @@
 
 <div class="slip-wrapper">
     <div style="text-align: center; margin-bottom: 12px;">
-        <img src="{{ asset('images/logo.png') }}" alt="DFTM Logo" style="height: 48px; max-width: 240px; object-fit: contain;">
+        <img src="{{ asset('images/logo.png') }}" alt="DFTM Logo" style="height: 60px; max-width: 360px; object-fit: contain;">
     </div>
 
     <!-- Material Description Header Block -->
@@ -135,22 +139,22 @@
         </tr>
         <tr>
             <td class="excel-label">COMPANY NAME:</td>
-            <td style="font-weight: 700; width: 30%;">{{ $customerName ?: ($batch->company_name ?? 'DFTM DIGITAL SOLUTIONS') }}</td>
+            <td style="font-weight: 700; width: 30%; text-align: center;">{{ $customerName ?: ($batch->company_name ?? 'DFTM DIGITAL SOLUTIONS') }}</td>
             <td class="excel-label">BATCH NUMBER:</td>
-            <td style="font-weight: 900; width: 30%; color: #00205B;">{{ $batch->batch_no }}</td>
+            <td style="font-weight: 900; width: 30%; color: #00205B; text-align: center;">{{ $batch->batch_no }}</td>
         </tr>
         <tr>
             <td class="excel-label">DATE RELEASED:</td>
-            <td>{{ $dateReleased ?: now()->format('Y-m-d') }}</td>
+            <td style="text-align: center;">{{ $dateReleased ?: now()->format('Y-m-d') }}</td>
             <td class="excel-label">TOTAL QUANTITY:</td>
-            <td style="font-weight: 800;">{{ $items->count() }} PCS</td>
+            <td style="font-weight: 800; text-align: center;">{{ $items->count() }} PCS</td>
         </tr>
         @if($siNumber || $drNumber)
         <tr>
             <td class="excel-label">SI NUMBER:</td>
-            <td style="font-family: monospace; font-weight: 700;">{{ $siNumber ?: '-' }}</td>
+            <td style="font-weight: 700; text-align: center;">{{ $siNumber ?: '-' }}</td>
             <td class="excel-label">DR NUMBER:</td>
-            <td style="font-family: monospace; font-weight: 700;">{{ $drNumber ?: '-' }}</td>
+            <td style="font-weight: 700; text-align: center;">{{ $drNumber ?: '-' }}</td>
         </tr>
         @endif
         <tr>
@@ -178,8 +182,8 @@
                     <td class="col-no">{{ $idx + 1 }}</td>
                     <td>{{ $item->brand ?: ($batch->brand ?? '') }}</td>
                     <td>{{ $item->model ?: ($batch->model ?? '') }}</td>
-                    <td style="font-family: 'Consolas', monospace; font-weight: 700; color: #00205B;">{{ $item->serial_number ?? '' }}</td>
-                    <td style="font-family: 'Consolas', monospace;">{{ $item->mac_address ?? '' }}</td>
+                    <td style="font-weight: 700; color: #00205B; text-align: center;">{{ $item->serial_number ?? '' }}</td>
+                    <td style="text-align: center;">{{ $item->mac_address ?? '' }}</td>
                     <td style="text-align: center;">{{ $item->box_no ?? '' }}</td>
                 </tr>
             @empty

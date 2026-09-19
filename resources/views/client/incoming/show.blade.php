@@ -28,7 +28,7 @@
                 <div style="font-weight: 800; font-size: 1.05rem; color: var(--dftm-navy);">{{ $transmittal->company_name }}</div>
             </div>
             <div>
-                <small style="color: var(--dftm-slate); text-transform: uppercase; font-weight: 700; font-size: 0.72rem;">Default Brand & Model</small>
+                <small style="color: var(--dftm-slate); text-transform: uppercase; font-weight: 700; font-size: 0.72rem;">Brand & Model</small>
                 <div style="font-weight: 700; font-size: 1.05rem;">{{ $transmittal->brand ?: 'Mixed' }} {{ $transmittal->model }}</div>
             </div>
             <div>
@@ -68,7 +68,6 @@
                     <th>Model</th>
                     <th>Serial Number</th>
                     <th>MAC Address</th>
-                    <th>Box No</th>
                     <th>Batch</th>
                     <th>Repair Status</th>
                     <th>Stock Status</th>
@@ -82,7 +81,6 @@
                     <td><strong>{{ $item->model ?: $transmittal->model }}</strong></td>
                     <td><span class="mono" style="font-weight: 800; color: var(--dftm-navy);">{{ $item->serial_number }}</span></td>
                     <td><span class="mono">{{ $item->mac_address ?: '-' }}</span></td>
-                    <td>{{ $item->box_no ?: '-' }}</td>
                     <td>
                         @if($item->batch)
                             <a href="{{ route('client.traceability.index', ['batch_id' => $item->batch_id]) }}" style="font-weight: 700; color: var(--dftm-navy);">

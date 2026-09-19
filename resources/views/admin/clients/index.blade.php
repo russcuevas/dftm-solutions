@@ -8,7 +8,7 @@
     <div class="card-header">
         <div>
             <div class="card-title"><i class="bi bi-buildings"></i> Client Accounts (Customer Portals)</div>
-            <div class="card-subtitle">Manage customer accounts with view-only tracking for Incoming Transmittals, Batches, and Outgoing Slips</div>
+            <div class="card-subtitle">Manage customer accounts with view-only tracking for Incoming, Batches, and Outgoing Slips</div>
         </div>
         <button type="button" class="btn btn-primary" data-modal-open="addClientModal" onclick="document.getElementById('addClientModal').classList.add('active');">
             <i class="bi bi-building-add"></i> + Register New Client

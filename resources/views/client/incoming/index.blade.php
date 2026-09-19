@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
-@section('title', 'Incoming Transmittals')
-@section('page_title', 'My Company Incoming Transmittals')
+@section('title', 'Incoming')
+@section('page_title', 'Incoming')
 
 @section('content')
 <div class="card">

@@ -1,18 +1,18 @@
 @extends('layouts.app')
 
-@section('title', 'Incoming Transmittals')
-@section('page_title', 'Incoming Transmittals')
+@section('title', 'Incoming')
+@section('page_title', 'Incoming')
 
 @section('content')
 <div class="card">
     <div class="card-header">
         <div>
-            <div class="card-title"><i class="bi bi-box-arrow-in-down"></i> Incoming Transmittals</div>
-            <div class="card-subtitle">Encode and scan incoming transmittals in real-time</div>
+            <div class="card-title"><i class="bi bi-box-arrow-in-down"></i> Incoming</div>
+            <div class="card-subtitle">Encode and scan incoming repair slips in real-time</div>
         </div>
         <div style="display: flex; gap: 10px;">
             <a href="{{ route('encoder.incoming.create') }}" class="btn btn-primary">
-                <i class="bi bi-plus-circle"></i> Create New Transmittal
+                <i class="bi bi-plus-circle"></i> +Create Incoming
             </a>
         </div>
     </div>
@@ -77,7 +77,7 @@
                 </tr>
                 @empty
                 <tr>
-                    <td colspan="7" style="text-align: center; color: var(--dftm-slate); padding: 32px;">No incoming transmittals found. Click "Create New Transmittal" above to start.</td>
+                    <td colspan="7" style="text-align: center; color: var(--dftm-slate); padding: 32px;">No incoming repair slips found. Click "+Create Incoming" above to start.</td>
                 </tr>
                 @endforelse
             </tbody>

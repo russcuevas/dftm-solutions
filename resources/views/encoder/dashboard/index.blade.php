@@ -124,12 +124,12 @@
 
 <!-- Grid for Recent Activities -->
 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 24px;">
-    <!-- Recent Incoming Transmittals -->
+    <!-- Recent Incoming -->
     <div class="card">
         <div class="card-header">
             <div>
-                <div class="card-title"><i class="bi bi-box-arrow-in-down"></i> Recent Incoming Transmittals</div>
-                <div class="card-subtitle">Transmittals registered in system</div>
+                <div class="card-title"><i class="bi bi-box-arrow-in-down"></i> Recent Incoming</div>
+                <div class="card-subtitle">Repair slips registered in system</div>
             </div>
             <a href="{{ route('encoder.incoming.index') }}" class="btn btn-outline btn-sm">View All</a>
         </div>

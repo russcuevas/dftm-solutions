@@ -61,7 +61,7 @@
                             <a href="{{ route('admin.incoming.index') }}"
                                 class="menu-link {{ request()->routeIs('admin.incoming.*') ? 'active' : '' }}">
                                 <span class="menu-icon"><i class="bi bi-box-arrow-in-down"></i></span>
-                                <span>Incoming Transmittals</span>
+                                <span>Incoming</span>
                             </a>
                         </li>
                         <li class="menu-item">
@@ -149,7 +149,7 @@
                         <a href="{{ route('client.incoming.index') }}"
                             class="menu-link {{ request()->routeIs('client.incoming.*') ? 'active' : '' }}">
                             <span class="menu-icon"><i class="bi bi-box-arrow-in-down"></i></span>
-                            <span>Incoming Transmittals</span>
+                            <span>Incoming</span>
                         </a>
                     </li>
                     <li class="menu-item">
@@ -182,7 +182,7 @@
                         <a href="{{ route('encoder.incoming.index') }}"
                             class="menu-link {{ request()->routeIs('encoder.incoming.*') ? 'active' : '' }}">
                             <span class="menu-icon"><i class="bi bi-input-cursor-text"></i></span>
-                            <span>Incoming Transmittals</span>
+                            <span>Incoming</span>
                         </a>
                     </li>
                     <li class="menu-item">

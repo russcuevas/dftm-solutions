@@ -1,14 +1,14 @@
 @extends('layouts.app')
 
-@section('title', 'Incoming Transmittal - ' . $transmittal->transmittal_no)
-@section('page_title', 'Incoming Transmittal Summary')
+@section('title', 'Incoming Repair Slip - ' . $transmittal->transmittal_no)
+@section('page_title', 'Incoming Repair Slip Summary')
 
 @section('content')
 <div class="card">
     <div class="card-header">
         <div>
             <div class="card-title">
-                <i class="bi bi-file-earmark-text-fill"></i> Incoming Transmittal: {{ $transmittal->transmittal_no }}
+                <i class="bi bi-file-earmark-text-fill"></i> Incoming Repair Slip: {{ $transmittal->transmittal_no }}
             </div>
             <div class="card-subtitle">Encoded by {{ $transmittal->encoder->name ?? 'System' }} on {{ $transmittal->created_at->format('M d, Y h:i A') }}</div>
         </div>
@@ -89,7 +89,6 @@
                                 <th>SERIAL NUMBER</th>
                                 <th>MAC ADDRESS</th>
                                 <th>BRAND</th>
-                                <th>BOX NO.</th>
                                 <th>BATCH STATUS</th>
                             </tr>
                         </thead>
@@ -100,7 +99,6 @@
                                 <td><span class="mono" style="font-weight: 700; color: var(--dftm-navy);">{{ $item->serial_number ?? '-' }}</span></td>
                                 <td><span class="mono">{{ $item->mac_address ?? '-' }}</span></td>
                                 <td>{{ $item->brand ?? '-' }}</td>
-                                <td>{{ $item->box_no ?? '-' }}</td>
                                 <td>
                                     @if($item->batch_id)
                                         <span class="badge badge-stock">{{ $item->batch->batch_no ?? 'BATCH' }}</span>
