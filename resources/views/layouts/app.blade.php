@@ -68,7 +68,7 @@
                             <a href="{{ route('admin.traceability.index') }}"
                                 class="menu-link {{ request()->routeIs('admin.traceability.*') ? 'active' : '' }}">
                                 <span class="menu-icon"><i class="bi bi-cpu-fill"></i></span>
-                                <span>Traceability (Batches)</span>
+                                <span>Repair Traceability Matrix</span>
                             </a>
                         </li>
                         <li class="menu-item">
@@ -156,7 +156,7 @@
                         <a href="{{ route('client.traceability.index') }}"
                             class="menu-link {{ request()->routeIs('client.traceability.*') ? 'active' : '' }}">
                             <span class="menu-icon"><i class="bi bi-diagram-3-fill"></i></span>
-                            <span>Traceability Batches</span>
+                            <span>Repair Traceability Matrix</span>
                         </a>
                     </li>
                     <li class="menu-item">
@@ -189,7 +189,7 @@
                         <a href="{{ route('encoder.traceability.index') }}"
                             class="menu-link {{ request()->routeIs('encoder.traceability.*') ? 'active' : '' }}">
                             <span class="menu-icon"><i class="bi bi-tools"></i></span>
-                            <span>Traceability Batches</span>
+                            <span>Repair Traceability Matrix</span>
                         </a>
                     </li>
                     <li class="menu-item">

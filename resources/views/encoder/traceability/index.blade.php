@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Traceability Matrix & Batches')
+@section('title', 'Repair Traceability Matrix')
 @section('page_title', 'Repair Traceability Matrix')
 
 @section('content')
