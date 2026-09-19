@@ -106,7 +106,7 @@
     <div class="card-body" style="padding: 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px;">
         <div>
             <h2 style="font-size: 1.3rem; font-weight: 800; margin-bottom: 6px; color: #FFFFFF;">Ready to process units in the new system flow?</h2>
-            <p style="color: #94A3B8; font-size: 0.88rem; margin: 0;">Scan incoming shipments with Transmittal No, form Traceability Batches, and generate Outgoing Reports</p>
+            <p style="color: #94A3B8; font-size: 0.88rem; margin: 0;">Scan incoming shipments, form Repair Traceability Matrix Batches, and generate Outgoing Repair Slips</p>
         </div>
         <div style="display: flex; gap: 10px; flex-wrap: wrap;">
             <a href="{{ route('encoder.incoming.create') }}" class="btn btn-accent" style="padding: 10px 18px;">
@@ -116,7 +116,7 @@
                 <i class="bi bi-diagram-3"></i> 2. Form Traceability Batch
             </a>
             <a href="{{ route('encoder.outgoing.index') }}" class="btn btn-outline" style="padding: 10px 18px; color: #FFFFFF; border-color: rgba(255, 255, 255, 0.4);">
-                <i class="bi bi-file-earmark-text"></i> 3. Outgoing Reports
+                <i class="bi bi-file-earmark-text"></i> 3. Outgoing
             </a>
         </div>
     </div>

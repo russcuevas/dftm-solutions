@@ -1,14 +1,14 @@
 @extends('layouts.app')
 
-@section('title', 'Outgoing Reports & Slips')
-@section('page_title', 'Outgoing Reports & Slips')
+@section('title', 'Outgoing Repair Slip')
+@section('page_title', 'Outgoing Repair Slip')
 
 @section('content')
 <div class="card" style="margin-bottom: 20px;">
     <div class="card-header">
         <div>
-            <div class="card-title"><i class="bi bi-box-arrow-right"></i> Outgoing Repair & Inspection Slips</div>
-            <div class="card-subtitle">View and print official outgoing slips generated from completed traceability batches.</div>
+            <div class="card-title"><i class="bi bi-box-arrow-right"></i> Outgoing Repair Slips</div>
+            <div class="card-subtitle">View and print official outgoing repair slips generated from completed traceability batches.</div>
         </div>
         @if($selectedBatch)
             <div style="display: flex; align-items: center; gap: 10px;">
@@ -124,7 +124,7 @@
     @else
         <div style="text-align: center; padding: 60px 20px; color: var(--dftm-slate);">
             <i class="bi bi-box-arrow-right" style="font-size: 3rem; color: #CBD5E1;"></i>
-            <h3 style="font-size: 1.15rem; font-weight: 800; color: var(--dftm-navy); margin-top: 12px;">No Outgoing Reports Available</h3>
+            <h3 style="font-size: 1.15rem; font-weight: 800; color: var(--dftm-navy); margin-top: 12px;">No Outgoing Repair Slips Available</h3>
             <p>Once DFTM technicians complete diagnostics and form outgoing repair slips for {{ $companyName }}, you will be able to review and print them here.</p>
         </div>
     @endif

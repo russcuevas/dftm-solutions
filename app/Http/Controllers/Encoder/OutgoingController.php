@@ -372,6 +372,21 @@ class OutgoingController extends Controller
 
         $siNumber = $request->input('si_number');
         $drNumber = $request->input('dr_number');
+
+        if (!$siNumber || !$drNumber) {
+            $associatedSlip = OutgoingSlip::where('batch_no', $batch->batch_no)->latest()->first();
+            if ($associatedSlip) {
+                $siNumber = $siNumber ?: $associatedSlip->si_number;
+                $drNumber = $drNumber ?: $associatedSlip->dr_number;
+            }
+        }
+        if (!$siNumber && $items->isNotEmpty()) {
+            $siNumber = $items->first()->si_number;
+        }
+        if (!$drNumber && $items->isNotEmpty()) {
+            $drNumber = $items->first()->dr_number;
+        }
+
         $dateReleased = $request->input('date_released', now()->format('Y-m-d'));
         $customerName = $request->input('customer_name', $batch->company_name);
 

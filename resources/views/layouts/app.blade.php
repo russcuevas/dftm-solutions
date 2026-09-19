@@ -75,7 +75,7 @@
                             <a href="{{ route('admin.outgoing.index') }}"
                                 class="menu-link {{ request()->routeIs('admin.outgoing.*') ? 'active' : '' }}">
                                 <span class="menu-icon"><i class="bi bi-printer-fill"></i></span>
-                                <span>Outgoing Reports</span>
+                                <span>Outgoing</span>
                             </a>
                         </li>
                         <li class="menu-item">
@@ -163,7 +163,7 @@
                         <a href="{{ route('client.outgoing.index') }}"
                             class="menu-link {{ request()->routeIs('client.outgoing.*') ? 'active' : '' }}">
                             <span class="menu-icon"><i class="bi bi-printer-fill"></i></span>
-                            <span>Outgoing Reports</span>
+                            <span>Outgoing</span>
                         </a>
                     </li>
                 @else
@@ -196,7 +196,7 @@
                         <a href="{{ route('encoder.outgoing.index') }}"
                             class="menu-link {{ request()->routeIs('encoder.outgoing.*') ? 'active' : '' }}">
                             <span class="menu-icon"><i class="bi bi-printer-fill"></i></span>
-                            <span>Outgoing Reports</span>
+                            <span>Outgoing</span>
                         </a>
                     </li>
                     <li class="menu-item">

@@ -238,11 +238,11 @@
         <div class="card">
             <div class="card-header">
                 <div>
-                    <div class="card-title"><i class="bi bi-box-arrow-up-right"></i> Recent Outgoing Reports & Releases</div>
+                    <div class="card-title"><i class="bi bi-box-arrow-up-right"></i> Recent Outgoing</div>
                     <div class="card-subtitle">Batch release documentation generated for dispatch</div>
                 </div>
                 <a href="{{ route('admin.outgoing.index') }}" class="btn btn-accent btn-sm">
-                    <i class="bi bi-file-earmark-arrow-down"></i> Generate Outgoing Report
+                    <i class="bi bi-file-earmark-arrow-down"></i> Outgoing Repair Slip
                 </a>
             </div>
             <div class="table-responsive">

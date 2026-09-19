@@ -1,14 +1,14 @@
 @extends('layouts.app')
 
-@section('title', 'Outgoing Reports Generator')
-@section('page_title', 'Outgoing Report Generator')
+@section('title', 'Outgoing Repair Slip')
+@section('page_title', 'Outgoing Repair Slip')
 
 @section('content')
 <div class="card" style="margin-bottom: 20px;">
     <div class="card-header">
         <div>
-            <div class="card-title"><i class="bi bi-printer-fill"></i> Outgoing Report Generator (Galing sa Traceability)</div>
-            <div class="card-subtitle">Pumili ng Batch mula sa Traceability para agad ma-generate ang Outgoing Slip na handa nang i-print.</div>
+            <div class="card-title"><i class="bi bi-printer-fill"></i> Outgoing Repair Slip (Galing sa Traceability)</div>
+            <div class="card-subtitle">Pumili ng Batch mula sa Traceability para agad ma-generate ang Outgoing Repair Slip na handa nang i-print.</div>
         </div>
         @if($selectedBatch)
             <div style="display: flex; align-items: center; gap: 10px;">

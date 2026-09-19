@@ -118,7 +118,15 @@
         <img src="{{ asset('images/logo.png') }}" alt="DFTM Logo" style="height: 32px;">
         <strong style="color: #00205B;">DFTM DIGITAL SOLUTIONS</strong>
     </div>
-    <div style="display: flex; gap: 8px;">
+    <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+        <div style="display: flex; align-items: center; gap: 4px;">
+            <label style="font-size: 0.8rem; font-weight: 700; color: #475569;">SI #:</label>
+            <input type="text" id="customSiInput" placeholder="SI Number" value="{{ $siNumber }}" oninput="document.getElementById('displaySiNumber').innerText = this.value || '-'" style="width: 120px; padding: 4px 8px; font-size: 0.85rem; border: 1px solid #CBD5E1; border-radius: 4px;">
+        </div>
+        <div style="display: flex; align-items: center; gap: 4px;">
+            <label style="font-size: 0.8rem; font-weight: 700; color: #475569;">DR #:</label>
+            <input type="text" id="customDrInput" placeholder="DR Number" value="{{ $drNumber }}" oninput="document.getElementById('displayDrNumber').innerText = this.value || '-'" style="width: 120px; padding: 4px 8px; font-size: 0.85rem; border: 1px solid #CBD5E1; border-radius: 4px;">
+        </div>
         <button onclick="window.print()" class="btn btn-primary">
             <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M2.5 8a.5.5 0 1 0 0-1 .5.5 0 0 0 0 1z"/><path d="M5 1a2 2 0 0 0-2 2v2H2a2 2 0 0 0-2 2v3a2 2 0 0 0 2 2h1v1a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2v-1h1a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-1V3a2 2 0 0 0-2-2H5zM4 3a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2H4V3zm1 5a2 2 0 0 0-2 2v1H2a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1v-1a2 2 0 0 0-2-2H5zm7 2v3a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1z"/></svg>
             Print Outgoing Slip
@@ -129,7 +137,7 @@
 
 <div class="slip-wrapper">
     <div style="text-align: center; margin-bottom: 12px;">
-        <img src="{{ asset('images/logo.png') }}" alt="DFTM Logo" style="height: 60px; max-width: 360px; object-fit: contain;">
+        <img src="{{ asset('images/logo.png') }}" alt="DFTM Logo" style="height: 80px; max-width: 460px; object-fit: contain;">
     </div>
 
     <!-- Material Description Header Block -->
@@ -149,14 +157,12 @@
             <td class="excel-label">TOTAL QUANTITY:</td>
             <td style="font-weight: 800; text-align: center;">{{ $items->count() }} PCS</td>
         </tr>
-        @if($siNumber || $drNumber)
         <tr>
             <td class="excel-label">SI NUMBER:</td>
-            <td style="font-weight: 700; text-align: center;">{{ $siNumber ?: '-' }}</td>
+            <td style="font-weight: 700; text-align: center;"><span id="displaySiNumber">{{ $siNumber ?: '-' }}</span></td>
             <td class="excel-label">DR NUMBER:</td>
-            <td style="font-weight: 700; text-align: center;">{{ $drNumber ?: '-' }}</td>
+            <td style="font-weight: 700; text-align: center;"><span id="displayDrNumber">{{ $drNumber ?: '-' }}</span></td>
         </tr>
-        @endif
         <tr>
             <td colspan="4" style="text-align: center; font-weight: 800; background: #F8FAFC; letter-spacing: 0.5px;">
                 MATERIAL DESCRIPTION: {{ strtoupper($batch->brand ?? '') }} {{ strtoupper($batch->model ?? '') }}
