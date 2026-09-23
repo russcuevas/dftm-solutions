@@ -76,10 +76,10 @@ class TraceabilityController extends Controller
             $metricsQuery->whereNotNull('batch_id');
         }
 
+        $goodCount = (clone $metricsQuery)->where('repair_status', 'GOOD')->count();
         $repairedCount = (clone $metricsQuery)->where('repair_status', 'Repaired')->count();
         $inProcessCount = (clone $metricsQuery)->where(function($q) {
-            $q->whereIn('repair_status', ['In process', 'PENDING', 'IN_PROCESS'])
-              ->orWhereNull('repair_status');
+            $q->whereIn('repair_status', ['In process', 'PENDING', 'IN_PROCESS']);
         })->count();
         $berCount = (clone $metricsQuery)->where('repair_status', 'BER')->count();
 
@@ -89,6 +89,7 @@ class TraceabilityController extends Controller
             'batches',
             'selectedBatch',
             'activeBatchId',
+            'goodCount',
             'repairedCount',
             'inProcessCount',
             'berCount'

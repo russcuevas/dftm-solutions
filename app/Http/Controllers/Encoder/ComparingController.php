@@ -293,7 +293,7 @@ class ComparingController extends Controller
             $dateDelivered = $request->input('date_delivered', now()->format('Y-m-d'));
             $defaultBrand = $request->input('brand');
             $defaultModel = $request->input('model');
-            $defaultStatus = $request->input('status', 'In process');
+            $defaultStatus = $request->input('status', 'GOOD');
             $notes = $request->input('notes');
 
             $items = InventoryItem::whereIn('id', $selectedItemIds)->with('transmittal')->get();
@@ -325,7 +325,7 @@ class ComparingController extends Controller
                 $diag = !empty($rowDiagnostics[$item->id]) ? trim($rowDiagnostics[$item->id]) : ($item->technical_diagnostic ?: 'Test and Clean');
                 $part = !empty($rowParts[$item->id]) ? trim($rowParts[$item->id]) : ($item->replace_parts ?: 'GOOD');
                 $box = !empty($rowBoxes[$item->id]) ? trim($rowBoxes[$item->id]) : $item->box_no;
-                $stat = !empty($rowStatuses[$item->id]) ? trim($rowStatuses[$item->id]) : ($item->repair_status ?: $defaultStatus);
+                $stat = !empty($rowStatuses[$item->id]) ? trim($rowStatuses[$item->id]) : ($defaultStatus ?: 'GOOD');
 
                 $item->update([
                     'batch_id' => $batch->id,

@@ -75,6 +75,7 @@
                 <div class="form-group">
                     <label class="form-label">Initial Batch Status</label>
                     <select name="status" class="form-select">
+                        <option value="GOOD" selected>GOOD</option>
                         <option value="In process">In process</option>
                         <option value="Repaired">Repaired</option>
                         <option value="BER">BER</option>

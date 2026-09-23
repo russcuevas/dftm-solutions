@@ -190,14 +190,14 @@
             } elseif ($uniqueStatuses->count() > 1) {
                 $currentStatus = 'ALL';
             } else {
-                $currentStatus = $firstItem->repair_status ?? ($items->count() > 0 ? 'In process' : '-');
+                $currentStatus = $firstItem->repair_status ?? ($items->count() > 0 ? 'GOOD' : '-');
             }
         }
         $statusVal = strtoupper($currentStatus ?: '-');
         $statusColor = match($statusVal) {
             'BER' => '#DC2626',
             'IN PROCESS', 'IN_PROCESS', 'PENDING' => '#D97706',
-            'REPAIRED' => '#059669',
+            'REPAIRED', 'GOOD' => '#059669',
             default => '#000000'
         };
     @endphp
@@ -267,8 +267,8 @@
                     <td class="col-no">{{ $idx + 1 }}</td>
                     <td style="font-weight: 700; color: #00205B; text-align: center;">{{ $item->technical_diagnostic ?? '' }}</td>
                     <td style="font-weight: 600; text-align: center;">{{ $item->replace_parts ?? '' }}</td>
-                    <td style="text-align: center; font-weight: 800; color: {{ $item->repair_status === 'BER' ? '#DC2626' : ($item->repair_status === 'In process' ? '#D97706' : '#059669') }};">
-                        {{ strtoupper($item->repair_status ?? 'In process') }}
+                    <td style="text-align: center; font-weight: 800; color: {{ $item->repair_status === 'BER' ? '#DC2626' : (in_array($item->repair_status, ['In process', 'IN_PROCESS', 'PENDING']) ? '#D97706' : '#059669') }};">
+                        {{ strtoupper($item->repair_status ?? 'GOOD') }}
                     </td>
                     <td style="font-weight: 700; color: #00205B; text-align: center;">{{ $item->serial_number ?? '' }}</td>
                     <td style="text-align: center;">{{ $item->mac_address ?? '' }}</td>

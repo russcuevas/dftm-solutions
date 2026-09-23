@@ -100,10 +100,10 @@ class TraceabilityController extends Controller
             $metricsQuery->whereNotNull('batch_id');
         }
 
+        $goodCount = (clone $metricsQuery)->where('repair_status', 'GOOD')->count();
         $repairedCount = (clone $metricsQuery)->where('repair_status', 'Repaired')->count();
         $inProcessCount = (clone $metricsQuery)->where(function($q) {
-            $q->whereIn('repair_status', ['In process', 'PENDING', 'IN_PROCESS'])
-              ->orWhereNull('repair_status');
+            $q->whereIn('repair_status', ['In process', 'PENDING', 'IN_PROCESS']);
         })->count();
         $berCount = (clone $metricsQuery)->where('repair_status', 'BER')->count();
 
@@ -116,6 +116,7 @@ class TraceabilityController extends Controller
             'activeBatchId',
             'companies',
             'companyFilter',
+            'goodCount',
             'repairedCount',
             'inProcessCount',
             'berCount',
@@ -169,7 +170,7 @@ class TraceabilityController extends Controller
             $brand = $request->input('brand') ?: ($firstItem?->brand ?? null);
             $model = $request->input('model') ?: ($firstItem?->model ?? null);
             $dateDelivered = $request->input('date_delivered', now()->format('Y-m-d'));
-            $defaultStatus = $request->input('status') ?: 'In process';
+            $defaultStatus = $request->input('status') ?: 'GOOD';
 
             $batch = Batch::create([
                 'batch_no' => $batchNo,
@@ -288,15 +289,21 @@ class TraceabilityController extends Controller
         $batch = Batch::findOrFail($id);
         $batchNo = $batch->batch_no;
 
+        // Reset items to unbatched and restore status to In process and IN_STOCK
         InventoryItem::where('batch_id', $batch->id)->update([
             'batch_id' => null,
+            'repair_status' => 'In process',
+            'stock_status' => 'IN_STOCK',
+            'technical_diagnostic' => null,
+            'replace_parts' => null,
+            'box_no' => null,
         ]);
 
         $batch->delete();
 
-        ActivityLog::log('TRACEABILITY_BATCH_DELETED', "Encoder deleted Batch {$batchNo}. Units returned to unbatched pool.");
+        ActivityLog::log('TRACEABILITY_BATCH_DELETED', "Encoder deleted Batch {$batchNo}. Units returned to unbatched pool with repair_status 'In process' and stock_status 'IN_STOCK'.");
 
-        return redirect()->route('encoder.traceability.index')->with('success', "Batch {$batchNo} deleted. All units returned to incoming pool.");
+        return redirect()->route('encoder.traceability.index')->with('success', "Batch {$batchNo} deleted. All units returned to incoming pool with repair status 'In process' and stock status 'IN_STOCK'.");
     }
 
     public function lookup(Request $request)

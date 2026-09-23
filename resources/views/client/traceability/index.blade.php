@@ -119,6 +119,7 @@
                             style="font-weight: 800; color: var(--dftm-slate); font-size: 0.72rem; text-transform: uppercase;">REPAIR
                             PROGRESS:</span>
                         <div style="display: flex; gap: 6px; margin-top: 5px; flex-wrap: wrap;">
+                            <span class="badge badge-repaired" style="background: #ECFDF5; color: #059669; border: 1px solid #A7F3D0;" title="GOOD">{{ $goodCount ?? 0 }} GOOD</span>
                             <span class="badge badge-stock" title="In Process">{{ $inProcessCount }} In Process</span>
                             <span class="badge badge-repaired" title="Repaired">{{ $repairedCount }} Repaired</span>
                             <span class="badge badge-ber" title="BER">{{ $berCount }} BER</span>
@@ -154,6 +155,7 @@
                         <select name="status" class="form-select form-select-sm" style="width: 140px; font-weight: 600;"
                             onchange="this.form.submit()">
                             <option value="">All Statuses</option>
+                            <option value="GOOD" {{ request('status') === 'GOOD' ? 'selected' : '' }}>GOOD</option>
                             <option value="In process" {{ request('status') === 'In process' ? 'selected' : '' }}>In
                                 process</option>
                             <option value="Repaired" {{ request('status') === 'Repaired' ? 'selected' : '' }}>Repaired
@@ -211,14 +213,14 @@
                                     @endif
                                 </td>
                                 <td style="text-align: center;">
-                                    @if ($item->repair_status === 'Repaired')
-                                        <span class="badge badge-repaired"><i class="bi bi-check-circle-fill"></i>
-                                            Repaired</span>
+                                    @if ($item->repair_status === 'GOOD')
+                                        <span class="badge badge-repaired"><i class="bi bi-check-circle-fill"></i> GOOD</span>
+                                    @elseif ($item->repair_status === 'Repaired')
+                                        <span class="badge badge-repaired"><i class="bi bi-check-circle-fill"></i> Repaired</span>
                                     @elseif($item->repair_status === 'BER')
                                         <span class="badge badge-ber"><i class="bi bi-x-circle-fill"></i> BER</span>
                                     @else
-                                        <span class="badge badge-stock"><i class="bi bi-hourglass-split"></i> In
-                                            process</span>
+                                        <span class="badge badge-stock"><i class="bi bi-hourglass-split"></i> In process</span>
                                     @endif
                                 </td>
                                 <td style="font-weight: 600;">{{ $item->brand ?? '-' }}</td>

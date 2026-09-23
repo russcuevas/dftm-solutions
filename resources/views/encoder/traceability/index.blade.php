@@ -152,7 +152,8 @@
                     </div>
                     <div>
                         <span style="font-weight: 800; color: var(--dftm-slate); font-size: 0.72rem; text-transform: uppercase;">REPAIR SUMMARY:</span>
-                        <div style="display: flex; gap: 6px; margin-top: 4px;">
+                        <div style="display: flex; gap: 6px; margin-top: 4px; flex-wrap: wrap;">
+                            <span class="badge badge-repaired" style="background: #ECFDF5; color: #059669; border: 1px solid #A7F3D0;" title="GOOD">{{ $goodCount ?? 0 }} GOOD</span>
                             <span class="badge badge-stock" title="In Process">{{ $inProcessCount }} In Process</span>
                             <span class="badge badge-repaired" title="Repaired">{{ $repairedCount }} Repaired</span>
                             <span class="badge badge-ber" title="BER">{{ $berCount }} BER</span>
@@ -175,6 +176,7 @@
             <div style="display: flex; align-items: center; gap: 6px;">
                 <span style="font-size: 0.78rem; font-weight: 700; color: var(--dftm-slate);">STATUS:</span>
                 <select id="bulkStatusSelect" class="form-select form-select-sm" style="width: 130px; font-weight: 600;">
+                    <option value="GOOD" selected>GOOD</option>
                     <option value="In process">In process</option>
                     <option value="Repaired">Repaired</option>
                     <option value="BER">BER</option>
@@ -248,6 +250,7 @@
                             </td>
                             <td>
                                 <select class="matrix-input row-status" style="font-weight: 700; cursor: pointer;">
+                                    <option value="GOOD" {{ in_array($item->repair_status, ['GOOD', 'Good', 'good']) || empty($item->repair_status) ? 'selected' : '' }}>GOOD</option>
                                     <option value="In process" {{ in_array($item->repair_status, ['In process', 'IN_PROCESS', 'PENDING']) ? 'selected' : '' }}>In process</option>
                                     <option value="Repaired" {{ $item->repair_status === 'Repaired' ? 'selected' : '' }}>Repaired</option>
                                     <option value="BER" {{ $item->repair_status === 'BER' ? 'selected' : '' }}>BER</option>
@@ -347,7 +350,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const itemId = row.getAttribute('data-item-id');
         const diagnostic = row.querySelector('.row-diagnostic')?.value || '';
         const parts = row.querySelector('.row-parts')?.value || '';
-        const status = row.querySelector('.row-status')?.value || 'In process';
+        const status = row.querySelector('.row-status')?.value || 'GOOD';
         const box = row.querySelector('.row-box')?.value || '';
         const saveBtn = row.querySelector('.btn-save-row');
 
