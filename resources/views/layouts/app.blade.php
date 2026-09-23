@@ -65,6 +65,13 @@
                             </a>
                         </li>
                         <li class="menu-item">
+                            <a href="{{ route('admin.comparing.index') }}"
+                                class="menu-link {{ request()->routeIs('admin.comparing.*') ? 'active' : '' }}">
+                                <span class="menu-icon"><i class="bi bi-upc-scan"></i></span>
+                                <span>Comparing & Batching</span>
+                            </a>
+                        </li>
+                        <li class="menu-item">
                             <a href="{{ route('admin.traceability.index') }}"
                                 class="menu-link {{ request()->routeIs('admin.traceability.*') ? 'active' : '' }}">
                                 <span class="menu-icon"><i class="bi bi-cpu-fill"></i></span>
@@ -183,6 +190,13 @@
                             class="menu-link {{ request()->routeIs('encoder.incoming.*') ? 'active' : '' }}">
                             <span class="menu-icon"><i class="bi bi-input-cursor-text"></i></span>
                             <span>Incoming</span>
+                        </a>
+                    </li>
+                    <li class="menu-item">
+                        <a href="{{ route('encoder.comparing.index') }}"
+                            class="menu-link {{ request()->routeIs('encoder.comparing.*') ? 'active' : '' }}">
+                            <span class="menu-icon"><i class="bi bi-upc-scan"></i></span>
+                            <span>Comparing & Batching</span>
                         </a>
                     </li>
                     <li class="menu-item">

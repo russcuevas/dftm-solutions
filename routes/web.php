@@ -10,12 +10,14 @@ use App\Http\Controllers\Admin\InventoryController as AdminInventoryController;
 use App\Http\Controllers\Admin\TraceabilityController as AdminTraceabilityController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\Admin\ClientController as AdminClientController;
+use App\Http\Controllers\Admin\ComparingController as AdminComparingController;
 use App\Http\Controllers\Admin\ConsumableInventoryController as AdminConsumableInventoryController;
 use App\Http\Controllers\Admin\ConsumableCategoryController as AdminConsumableCategoryController;
 use App\Http\Controllers\Admin\ConsumableItemController as AdminConsumableItemController;
 
 use App\Http\Controllers\Encoder\DashboardController as EncoderDashboardController;
 use App\Http\Controllers\Encoder\IncomingController as EncoderIncomingController;
+use App\Http\Controllers\Encoder\ComparingController as EncoderComparingController;
 use App\Http\Controllers\Encoder\OutgoingController as EncoderOutgoingController;
 use App\Http\Controllers\Encoder\TraceabilityController as EncoderTraceabilityController;
 use App\Http\Controllers\Encoder\InventoryController as EncoderInventoryController;
@@ -80,6 +82,12 @@ Route::middleware(['admin'])->prefix('admin')->name('admin.')->group(function ()
     Route::post('/incoming/{id}/add-rows', [AdminIncomingController::class, 'addRows'])->name('incoming.addRows');
     Route::delete('/incoming/{id}/item/{itemId}', [AdminIncomingController::class, 'deleteItem'])->name('incoming.deleteItem');
     Route::post('/incoming/{id}/save-header', [AdminIncomingController::class, 'saveHeader'])->name('incoming.saveHeader');
+
+    // Comparing & Batch Creation (Scanner Gun & Company Pooling)
+    Route::get('/comparing', [AdminComparingController::class, 'index'])->name('comparing.index');
+    Route::get('/comparing/company-units', [AdminComparingController::class, 'getCompanyUnits'])->name('comparing.companyUnits');
+    Route::post('/comparing/scan', [AdminComparingController::class, 'verifyScan'])->name('comparing.scan');
+    Route::post('/comparing/create-batch', [AdminComparingController::class, 'storeBatch'])->name('comparing.storeBatch');
 
     // Traceability Matrix & Batches
     Route::get('/traceability/lookup', [AdminTraceabilityController::class, 'lookup'])->name('traceability.lookup');
@@ -169,6 +177,12 @@ Route::middleware(['encoder'])->prefix('encoder')->name('encoder.')->group(funct
     Route::post('/incoming/{id}/add-rows', [EncoderIncomingController::class, 'addRows'])->name('incoming.addRows');
     Route::delete('/incoming/{id}/item/{itemId}', [EncoderIncomingController::class, 'deleteItem'])->name('incoming.deleteItem');
     Route::post('/incoming/{id}/save-header', [EncoderIncomingController::class, 'saveHeader'])->name('incoming.saveHeader');
+
+    // Comparing & Batch Creation (Scanner Gun & Company Pooling)
+    Route::get('/comparing', [EncoderComparingController::class, 'index'])->name('comparing.index');
+    Route::get('/comparing/company-units', [EncoderComparingController::class, 'getCompanyUnits'])->name('comparing.companyUnits');
+    Route::post('/comparing/scan', [EncoderComparingController::class, 'verifyScan'])->name('comparing.scan');
+    Route::post('/comparing/create-batch', [EncoderComparingController::class, 'storeBatch'])->name('comparing.storeBatch');
 
     // Traceability Matrix & Batches
     Route::get('/traceability/lookup', [EncoderTraceabilityController::class, 'lookup'])->name('traceability.lookup');

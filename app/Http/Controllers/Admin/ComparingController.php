@@ -1,0 +1,322 @@
+<?php
+
+namespace App\Http\Controllers\Admin;
+
+use App\Http\Controllers\Controller;
+use App\Models\InventoryItem;
+use App\Models\Batch;
+use App\Models\Transmittal;
+use App\Models\ActivityLog;
+use App\Models\User;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
+
+class ComparingController extends Controller
+{
+    /**
+     * Display the Comparing & Batch Creation interface
+     */
+    public function index(Request $request)
+    {
+        // 1. Get all companies that have unbatched / in-process items across any incoming transmittal
+        $companiesWithCounts = InventoryItem::whereNull('batch_id')
+            ->whereNotNull('company_name')
+            ->where('company_name', '!=', '')
+            ->select('company_name', DB::raw('count(*) as unbatched_count'))
+            ->groupBy('company_name')
+            ->orderBy('company_name', 'asc')
+            ->get();
+
+        // Also get all registered client companies in case they want to start a batch for a company with 0 current items
+        $allRegisteredCompanies = User::where('role', 'client')
+            ->whereNotNull('company_name')
+            ->where('company_name', '!=', '')
+            ->pluck('company_name')
+            ->merge(Transmittal::whereNotNull('company_name')->where('company_name', '!=', '')->pluck('company_name'))
+            ->merge(InventoryItem::whereNotNull('company_name')->where('company_name', '!=', '')->pluck('company_name'))
+            ->unique()
+            ->sort()
+            ->values();
+
+        $selectedCompany = $request->input('company', '');
+
+        // Auto-generate next suggested batch number e.g. "BATCH 1" or "BATCH 1 - TAGUIG"
+        $batchCount = Batch::count();
+        $nextBatchNumber = 'BATCH ' . ($batchCount + 1);
+
+        // Recent batches for quick reference
+        $recentBatches = Batch::latest()->take(5)->get();
+
+        return view('admin.comparing.index', compact(
+            'companiesWithCounts',
+            'allRegisteredCompanies',
+            'selectedCompany',
+            'nextBatchNumber',
+            'recentBatches'
+        ));
+    }
+
+    /**
+     * AJAX: Get all incoming unbatched / in-process units for a selected company
+     * Kinukuha lahat ng nainput sa incoming para sa company nang walang transmittal no filtering
+     */
+    public function getCompanyUnits(Request $request)
+    {
+        $company = trim($request->input('company', ''));
+
+        if (empty($company)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Please select a company name.',
+                'units' => [],
+                'total' => 0
+            ], 400);
+        }
+
+        // Fetch all units matching this company that have no batch_id assigned yet
+        $items = InventoryItem::with(['transmittal', 'encoder'])
+            ->whereNull('batch_id')
+            ->where(function ($q) use ($company) {
+                $q->where('company_name', $company)
+                  ->orWhereHas('transmittal', function ($tq) use ($company) {
+                      $tq->where('company_name', $company);
+                  });
+            })
+            ->orderBy('transmittal_id', 'desc')
+            ->orderBy('item_no', 'asc')
+            ->get();
+
+        $transmittalList = $items->pluck('transmittal.transmittal_no')->filter()->unique()->values();
+        $brands = $items->pluck('brand')->filter()->unique()->values();
+        $models = $items->pluck('model')->filter()->unique()->values();
+
+        return response()->json([
+            'success' => true,
+            'company' => $company,
+            'total' => $items->count(),
+            'transmittals' => $transmittalList,
+            'brands' => $brands,
+            'models' => $models,
+            'units' => $items->map(function ($item) {
+                return [
+                    'id' => $item->id,
+                    'item_no' => $item->item_no,
+                    'serial_number' => $item->serial_number ?? '',
+                    'mac_address' => $item->mac_address ?? '',
+                    'box_no' => $item->box_no ?? '',
+                    'brand' => $item->brand ?? '',
+                    'model' => $item->model ?? '',
+                    'company_name' => $item->company_name ?: ($item->transmittal?->company_name ?? ''),
+                    'transmittal_id' => $item->transmittal_id,
+                    'transmittal_no' => $item->transmittal?->transmittal_no ?? 'TR-UNASSIGNED',
+                    'date_received' => $item->date_delivered ? $item->date_delivered->format('Y-m-d') : ($item->transmittal?->date_received ? $item->transmittal->date_received->format('Y-m-d') : ''),
+                    'technical_diagnostic' => $item->technical_diagnostic ?: 'Test and Clean',
+                    'replace_parts' => $item->replace_parts ?: 'GOOD',
+                    'repair_status' => $item->repair_status ?: 'In process',
+                    'stock_status' => $item->stock_status ?: 'IN_STOCK',
+                ];
+            })
+        ]);
+    }
+
+    /**
+     * AJAX: Fast barcode scanner verification ("babarilin")
+     */
+    public function verifyScan(Request $request)
+    {
+        $code = trim($request->input('code', ''));
+        $company = trim($request->input('company', ''));
+
+        if (empty($code)) {
+            return response()->json([
+                'found' => false,
+                'message' => 'Please scan or enter a Serial Number or MAC Address.'
+            ], 400);
+        }
+
+        $cleanCode = preg_replace('/[^A-Za-z0-9]/', '', $code);
+
+        // Find unit in database
+        $query = InventoryItem::with(['transmittal', 'batch', 'encoder']);
+
+        if (!empty($company)) {
+            $query->where(function ($q) use ($company) {
+                $q->where('company_name', $company)
+                  ->orWhereHas('transmittal', function ($tq) use ($company) {
+                      $tq->where('company_name', $company);
+                  });
+            });
+        }
+
+        $item = (clone $query)->where(function ($q) use ($code, $cleanCode) {
+            $q->where('serial_number', $code)
+              ->orWhere('mac_address', $code);
+            if (!empty($cleanCode)) {
+                $q->orWhereRaw("REPLACE(REPLACE(REPLACE(serial_number, ':', ''), '-', ''), ' ', '') = ?", [$cleanCode])
+                  ->orWhereRaw("REPLACE(REPLACE(REPLACE(mac_address, ':', ''), '-', ''), ' ', '') = ?", [$cleanCode]);
+            }
+        })->first();
+
+        // Fallback partial search if not found
+        if (!$item) {
+            $item = (clone $query)->where(function ($q) use ($code) {
+                $q->where('serial_number', 'LIKE', "%{$code}%")
+                  ->orWhere('mac_address', 'LIKE', "%{$code}%");
+            })->first();
+        }
+
+        // If not found in the selected company, check if it exists in another company or already batched
+        if (!$item) {
+            $anywhereItem = InventoryItem::with(['transmittal', 'batch'])
+                ->where(function ($q) use ($code, $cleanCode) {
+                    $q->where('serial_number', $code)
+                      ->orWhere('mac_address', $code);
+                    if (!empty($cleanCode)) {
+                        $q->orWhereRaw("REPLACE(REPLACE(REPLACE(serial_number, ':', ''), '-', ''), ' ', '') = ?", [$cleanCode])
+                          ->orWhereRaw("REPLACE(REPLACE(REPLACE(mac_address, ':', ''), '-', ''), ' ', '') = ?", [$cleanCode]);
+                    }
+                })->first();
+
+            if ($anywhereItem) {
+                if ($anywhereItem->batch_id) {
+                    return response()->json([
+                        'found' => false,
+                        'is_already_batched' => true,
+                        'item' => $anywhereItem,
+                        'message' => "Unit {$code} is already assigned to {$anywhereItem->batch?->batch_no}!"
+                    ]);
+                }
+
+                $itemComp = $anywhereItem->company_name ?: ($anywhereItem->transmittal?->company_name ?? 'Unknown Company');
+                return response()->json([
+                    'found' => false,
+                    'is_other_company' => true,
+                    'other_company' => $itemComp,
+                    'item' => $anywhereItem,
+                    'message' => "Unit {$code} belongs to company '{$itemComp}', not '{$company}'."
+                ]);
+            }
+
+            return response()->json([
+                'found' => false,
+                'message' => "Barcode / Serial Number \"{$code}\" not found in Incoming records."
+            ], 404);
+        }
+
+        // Check if already batched
+        if ($item->batch_id) {
+            return response()->json([
+                'found' => true,
+                'is_already_batched' => true,
+                'item' => $item,
+                'batch_no' => $item->batch?->batch_no,
+                'message' => "Unit {$item->serial_number} is already part of Batch {$item->batch?->batch_no}."
+            ]);
+        }
+
+        return response()->json([
+            'found' => true,
+            'is_already_batched' => false,
+            'item' => [
+                'id' => $item->id,
+                'serial_number' => $item->serial_number,
+                'mac_address' => $item->mac_address,
+                'box_no' => $item->box_no,
+                'brand' => $item->brand,
+                'model' => $item->model,
+                'company_name' => $item->company_name ?: ($item->transmittal?->company_name ?? ''),
+                'transmittal_no' => $item->transmittal?->transmittal_no ?? 'TR-UNASSIGNED',
+                'technical_diagnostic' => $item->technical_diagnostic ?: 'Test and Clean',
+                'replace_parts' => $item->replace_parts ?: 'GOOD',
+                'repair_status' => $item->repair_status ?: 'In process',
+                'stock_status' => $item->stock_status ?: 'IN_STOCK',
+            ],
+            'message' => "Unit {$item->serial_number} matched successfully!"
+        ]);
+    }
+
+    /**
+     * Store and create new Traceability Batch from the Compared units
+     */
+    public function storeBatch(Request $request)
+    {
+        $request->validate([
+            'batch_no' => 'required|string|max:150',
+            'company_name' => 'required|string|max:255',
+            'selected_items' => 'required|array|min:1',
+        ], [
+            'selected_items.required' => 'Please scan or select at least one unit to form this Batch.',
+            'selected_items.min' => 'Please scan or select at least one unit to form this Batch.',
+        ]);
+
+        $selectedItemIds = $request->input('selected_items', []);
+
+        $batch = DB::transaction(function () use ($request, $selectedItemIds) {
+            $companyName = trim($request->input('company_name'));
+            $batchNo = trim($request->input('batch_no'));
+            $dateDelivered = $request->input('date_delivered', now()->format('Y-m-d'));
+            $defaultBrand = $request->input('brand');
+            $defaultModel = $request->input('model');
+            $defaultStatus = $request->input('status', 'In process');
+            $notes = $request->input('notes');
+
+            // Collect items
+            $items = InventoryItem::whereIn('id', $selectedItemIds)->with('transmittal')->get();
+            $firstItem = $items->first();
+
+            $brand = $defaultBrand ?: ($firstItem?->brand ?? 'N/A');
+            $model = $defaultModel ?: ($firstItem?->model ?? 'N/A');
+
+            // Custom diagnostics, parts, box numbers passed per row
+            $rowDiagnostics = $request->input('row_diagnostic', []);
+            $rowParts = $request->input('row_parts', []);
+            $rowBoxes = $request->input('row_box', []);
+            $rowStatuses = $request->input('row_status', []);
+
+            // 1. Create the Batch record
+            $batch = Batch::create([
+                'batch_no' => $batchNo,
+                'company_name' => $companyName,
+                'date_delivered' => $dateDelivered,
+                'brand' => $brand,
+                'model' => $model,
+                'total_quantity' => count($items),
+                'in_stock_quantity' => count($items),
+                'outgoing_quantity' => 0,
+                'status' => $defaultStatus,
+                'notes' => $notes,
+                'encoded_by' => Auth::id(),
+            ]);
+
+            // 2. Update each inventory item to link to this batch and apply Traceability attributes
+            foreach ($items as $index => $item) {
+                $diag = !empty($rowDiagnostics[$item->id]) ? trim($rowDiagnostics[$item->id]) : ($item->technical_diagnostic ?: 'Test and Clean');
+                $part = !empty($rowParts[$item->id]) ? trim($rowParts[$item->id]) : ($item->replace_parts ?: 'GOOD');
+                $box = !empty($rowBoxes[$item->id]) ? trim($rowBoxes[$item->id]) : $item->box_no;
+                $stat = !empty($rowStatuses[$item->id]) ? trim($rowStatuses[$item->id]) : ($item->repair_status ?: $defaultStatus);
+
+                $item->update([
+                    'batch_id' => $batch->id,
+                    'item_no' => $index + 1,
+                    'company_name' => $companyName,
+                    'box_no' => $box,
+                    'technical_diagnostic' => $diag,
+                    'replace_parts' => $part,
+                    'repair_status' => $stat,
+                    'stock_status' => 'IN_STOCK',
+                ]);
+            }
+
+            // Recalculate batch quantities
+            $batch->recalculateQuantities();
+
+            ActivityLog::log('COMPARING_BATCH_CREATED', "Created Traceability Batch {$batch->batch_no} with {$batch->total_quantity} units for company '{$companyName}'.");
+
+            return $batch;
+        });
+
+        return redirect()->route('admin.traceability.index', ['batch_id' => $batch->id])
+            ->with('success', "Comparing Complete! Batch '{$batch->batch_no}' successfully created with {$batch->total_quantity} units. Now open in Traceability Matrix.");
+    }
+}

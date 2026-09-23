@@ -92,10 +92,11 @@
                                 <optgroup label="🏢 {{ $cName }}">
                                     @foreach($cBatches as $b)
                                         @php
-                                            $cDisplay = $b->company_name ?: ($b->items->first()?->company_name ?: ($b->items->first()?->transmittal?->company_name ?: 'DFTM'));
+                                            $cDisplay = $b->company_name ?: ($b->items->first()?->company_name ?: ($b->items->first()?->transmittal?->company_name ?: ''));
+                                            $hasCompany = !empty($cDisplay) && str_contains(strtoupper($b->batch_no), strtoupper(trim($cDisplay)));
                                         @endphp
                                         <option value="{{ $b->id }}" {{ $selectedBatch && $selectedBatch->id == $b->id ? 'selected' : '' }}>
-                                            {{ $b->batch_no }} &bull; {{ $cDisplay }} ({{ $b->items->count() }} Units)
+                                            {{ $b->batch_no }}{{ !$hasCompany && $cDisplay ? ' • ' . $cDisplay : '' }} ({{ $b->items->count() }} Units)
                                         </option>
                                     @endforeach
                                 </optgroup>
@@ -108,7 +109,7 @@
 
                 <div style="display: flex; align-items: center; gap: 10px;">
                     <a href="{{ route('encoder.traceability.createBatch') }}" class="btn btn-accent btn-sm" style="font-weight: 700;">
-                        <i class="bi bi-plus-lg"></i> + Create New Batch
+                        <i class="bi bi-plus-lg"></i> Create New Batch
                     </a>
                     @if($selectedBatch)
                         <a href="{{ route('encoder.traceability.print', ['batch_id' => $selectedBatch->id]) }}" target="_blank" class="btn btn-outline btn-sm">
