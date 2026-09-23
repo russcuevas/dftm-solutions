@@ -64,40 +64,88 @@ class ComparingController extends Controller
     public function getCompanyUnits(Request $request)
     {
         $company = trim($request->input('company', ''));
+        $filterBrand = trim($request->input('brand', ''));
+        $filterModel = trim($request->input('model', ''));
 
         if (empty($company)) {
             return response()->json([
                 'success' => false,
                 'message' => 'Please select a company name.',
                 'units' => [],
+                'brands_data' => [],
                 'total' => 0
             ], 400);
         }
 
-        // Fetch all units matching this company that have no batch_id assigned yet
-        $items = InventoryItem::with(['transmittal', 'encoder'])
+        // Base query for this company's unbatched units
+        $baseQuery = InventoryItem::with(['transmittal', 'encoder'])
             ->whereNull('batch_id')
             ->where(function ($q) use ($company) {
                 $q->where('company_name', $company)
                   ->orWhereHas('transmittal', function ($tq) use ($company) {
                       $tq->where('company_name', $company);
                   });
-            })
+            });
+
+        $allItemsForCompany = (clone $baseQuery)->get();
+
+        // Build structured brands and models with counts
+        $brandsData = [];
+        $groupedByBrand = $allItemsForCompany->groupBy(function($it) {
+            return trim($it->brand ?: 'UNKNOWN');
+        });
+
+        foreach ($groupedByBrand as $bName => $bItems) {
+            $modelsData = [];
+            $groupedByModel = $bItems->groupBy(function($it) {
+                return trim($it->model ?: 'UNKNOWN');
+            });
+
+            foreach ($groupedByModel as $mName => $mItems) {
+                $modelsData[] = [
+                    'model' => $mName,
+                    'count' => $mItems->count(),
+                ];
+            }
+
+            // Sort models by name
+            usort($modelsData, fn($a, $b) => strcmp($a['model'], $b['model']));
+
+            $brandsData[] = [
+                'brand' => $bName,
+                'count' => $bItems->count(),
+                'models' => $modelsData,
+            ];
+        }
+
+        // Sort brands by name
+        usort($brandsData, fn($a, $b) => strcmp($a['brand'], $b['brand']));
+
+        // Apply filters if passed
+        $filteredQuery = clone $baseQuery;
+        if (!empty($filterBrand) && $filterBrand !== 'all') {
+            $filteredQuery->where('brand', $filterBrand);
+        }
+        if (!empty($filterModel) && $filterModel !== 'all') {
+            $filteredQuery->where('model', $filterModel);
+        }
+
+        $items = $filteredQuery
             ->orderBy('transmittal_id', 'desc')
             ->orderBy('item_no', 'asc')
             ->get();
 
         $transmittalList = $items->pluck('transmittal.transmittal_no')->filter()->unique()->values();
-        $brands = $items->pluck('brand')->filter()->unique()->values();
-        $models = $items->pluck('model')->filter()->unique()->values();
 
         return response()->json([
             'success' => true,
             'company' => $company,
             'total' => $items->count(),
+            'company_total' => $allItemsForCompany->count(),
+            'brands_data' => $brandsData,
             'transmittals' => $transmittalList,
-            'brands' => $brands,
-            'models' => $models,
+            'filter_brand' => $filterBrand,
+            'filter_model' => $filterModel,
             'units' => $items->map(function ($item) {
                 return [
                     'id' => $item->id,
