@@ -64,6 +64,22 @@
     </script>
 @endif
 
+@if(session('warning'))
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Paalala / Duplicate Skipped',
+                    html: {!! json_encode(session('warning')) !!},
+                    confirmButtonColor: '#00205B',
+                    confirmButtonText: 'Naintindihan'
+                });
+            }
+        });
+    </script>
+@endif
+
 @if($errors->any())
     <script>
         document.addEventListener('DOMContentLoaded', function() {

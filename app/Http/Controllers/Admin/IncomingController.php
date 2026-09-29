@@ -169,7 +169,7 @@ class IncomingController extends Controller
             'transmittal_no.unique' => 'The transmittal number has already been taken by another record.',
         ]);
 
-        DB::transaction(function () use ($request, $transmittal) {
+        $result = DB::transaction(function () use ($request, $transmittal) {
             $transmittal->update([
                 'transmittal_no' => trim($request->input('transmittal_no', $transmittal->transmittal_no)),
                 'company_name' => $request->input('company_name', $transmittal->company_name),
@@ -188,6 +188,9 @@ class IncomingController extends Controller
             $brands = $request->input('row_brand', []);
 
             $keptIds = [];
+            $savedCount = 0;
+            $duplicateSerials = [];
+            $seenSerialsInForm = [];
 
             if (is_array($serials)) {
                 $itemNo = 1;
@@ -198,54 +201,78 @@ class IncomingController extends Controller
                     $rowModel = !empty($models[$i]) ? trim($models[$i]) : $transmittal->model;
                     $rowBrand = !empty($brands[$i]) ? trim($brands[$i]) : $transmittal->brand;
 
-                    if (!empty($sn) || !empty($mac) || !empty($box) || $itemId) {
-                        $snTrimmed = $sn ? trim($sn) : null;
-                        if (!empty($snTrimmed)) {
+                    // If completely empty blank row, skip it
+                    if (empty($sn) && empty($mac) && empty($box) && empty($itemId)) {
+                        continue;
+                    }
+
+                    $snTrimmed = $sn ? trim($sn) : null;
+                    $isDuplicate = false;
+
+                    if (!empty($snTrimmed)) {
+                        // 1. Check if duplicate within current batch in the form
+                        if (in_array($snTrimmed, $seenSerialsInForm)) {
+                            $duplicateSerials[] = $snTrimmed;
+                            $isDuplicate = true;
+                        } else {
+                            // 2. Check if duplicate in the database (other items)
                             $dupCheck = InventoryItem::where('serial_number', $snTrimmed);
                             if ($itemId) {
                                 $dupCheck->where('id', '!=', $itemId);
                             }
                             if ($dupCheck->exists()) {
-                                if ($itemId) {
-                                    $keptIds[] = $itemId;
-                                }
-                                continue;
+                                $duplicateSerials[] = $snTrimmed;
+                                $isDuplicate = true;
                             }
                         }
+                    }
 
+                    if ($isDuplicate) {
+                        // If it's an existing item that user changed to duplicate, keep existing item record without updating it to the duplicate serial
                         if ($itemId) {
-                            $item = InventoryItem::where('transmittal_id', $transmittal->id)->find($itemId);
-                            if ($item) {
-                                $item->update([
-                                    'item_no' => $itemNo++,
-                                    'brand' => $rowBrand ?: $item->brand,
-                                    'model' => $rowModel ?: $item->model,
-                                    'serial_number' => $snTrimmed,
-                                    'mac_address' => $mac ? trim($mac) : null,
-                                    'box_no' => $box ? trim($box) : null,
-                                    'company_name' => $transmittal->company_name,
-                                ]);
-                                $keptIds[] = $item->id;
-                            }
-                        } else {
-                            $newItem = InventoryItem::create([
-                                'transmittal_id' => $transmittal->id,
+                            $keptIds[] = $itemId;
+                        }
+                        continue;
+                    }
+
+                    if (!empty($snTrimmed)) {
+                        $seenSerialsInForm[] = $snTrimmed;
+                    }
+
+                    if ($itemId) {
+                        $item = InventoryItem::where('transmittal_id', $transmittal->id)->find($itemId);
+                        if ($item) {
+                            $item->update([
                                 'item_no' => $itemNo++,
-                                'brand' => $rowBrand ?: $transmittal->brand,
-                                'model' => $rowModel ?: $transmittal->model,
+                                'brand' => $rowBrand ?: $item->brand,
+                                'model' => $rowModel ?: $item->model,
                                 'serial_number' => $snTrimmed,
                                 'mac_address' => $mac ? trim($mac) : null,
                                 'box_no' => $box ? trim($box) : null,
-                                'technical_diagnostic' => null,
-                                'replace_parts' => null,
-                                'repair_status' => $transmittal->status ?: 'In process',
-                                'stock_status' => 'IN_STOCK',
                                 'company_name' => $transmittal->company_name,
-                                'date_delivered' => $transmittal->date_received,
-                                'encoded_by' => Auth::id(),
                             ]);
-                            $keptIds[] = $newItem->id;
+                            $keptIds[] = $item->id;
+                            $savedCount++;
                         }
+                    } else {
+                        $newItem = InventoryItem::create([
+                            'transmittal_id' => $transmittal->id,
+                            'item_no' => $itemNo++,
+                            'brand' => $rowBrand ?: $transmittal->brand,
+                            'model' => $rowModel ?: $transmittal->model,
+                            'serial_number' => $snTrimmed,
+                            'mac_address' => $mac ? trim($mac) : null,
+                            'box_no' => $box ? trim($box) : null,
+                            'technical_diagnostic' => null,
+                            'replace_parts' => null,
+                            'repair_status' => $transmittal->status ?: 'In process',
+                            'stock_status' => 'IN_STOCK',
+                            'company_name' => $transmittal->company_name,
+                            'date_delivered' => $transmittal->date_received,
+                            'encoded_by' => Auth::id(),
+                        ]);
+                        $keptIds[] = $newItem->id;
+                        $savedCount++;
                     }
                 }
             }
@@ -257,10 +284,25 @@ class IncomingController extends Controller
                 ->delete();
 
             $transmittal->recalculateQuantities();
-            ActivityLog::log('INCOMING_UPDATED', "Updated Incoming Transmittal {$transmittal->transmittal_no}.");
+            ActivityLog::log('INCOMING_UPDATED', "Updated Incoming Transmittal {$transmittal->transmittal_no}. Saved: {$savedCount} items.");
+
+            return [
+                'savedCount' => $savedCount,
+                'duplicateSerials' => $duplicateSerials,
+            ];
         });
 
-        return redirect()->route('admin.incoming.show', $transmittal->id)->with('success', "Transmittal {$transmittal->transmittal_no} updated successfully!");
+        if (!empty($result['duplicateSerials'])) {
+            $uniqueDuplicates = array_unique($result['duplicateSerials']);
+            $dupCount = count($uniqueDuplicates);
+            $dupList = implode(', ', $uniqueDuplicates);
+
+            return redirect()->route('admin.incoming.show', $transmittal->id)
+                ->with('warning', "<strong>Nai-save ang {$result['savedCount']} valid item(s).</strong><br><br><span style='color: #DC2626;'>May <strong>{$dupCount}</strong> duplicate serial(s) na <u>HINDI nai-save</u> dahil existing na sa system:</span><br><code style='background: #FEF2F2; color: #DC2626; padding: 4px 8px; border-radius: 4px; display: inline-block; margin-top: 6px;'>{$dupList}</code>");
+        }
+
+        return redirect()->route('admin.incoming.show', $transmittal->id)
+            ->with('success', "Transmittal {$transmittal->transmittal_no} updated successfully! ({$result['savedCount']} items saved)");
     }
 
     public function destroy($id)
