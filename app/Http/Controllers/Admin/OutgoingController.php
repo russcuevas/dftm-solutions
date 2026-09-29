@@ -73,11 +73,13 @@ class OutgoingController extends Controller
     {
         $slipNo = 'ORS-' . date('Ymd') . '-' . str_pad(OutgoingSlip::count() + 1, 3, '0', STR_PAD_LEFT);
 
-        // Fetch all in-stock items available for release
+        // Fetch all in-stock items available for release, ordered by Box 1, Box 2...
         $availableItems = InventoryItem::with(['batch', 'transmittal'])
             ->where('stock_status', 'IN_STOCK')
-            ->orderBy('batch_id')
-            ->orderBy('item_no')
+            ->orderByRaw("CASE WHEN box_no IS NULL OR box_no = '' THEN 1 ELSE 0 END ASC")
+            ->orderByRaw("LENGTH(box_no) ASC, box_no ASC")
+            ->orderBy('item_no', 'asc')
+            ->orderBy('id', 'asc')
             ->get();
 
         $batches = Batch::with(['items.transmittal'])->where('in_stock_quantity', '>', 0)->get();
@@ -107,7 +109,12 @@ class OutgoingController extends Controller
 
         $slip = DB::transaction(function () use ($request, $selectedItemIds) {
             $slipNo = $request->input('slip_no') ?: ('ORS-' . date('Ymd') . '-' . str_pad(OutgoingSlip::count() + 1, 3, '0', STR_PAD_LEFT));
-            $items = InventoryItem::whereIn('id', $selectedItemIds)->with(['batch', 'transmittal'])->get();
+            $items = InventoryItem::whereIn('id', $selectedItemIds)
+                ->with(['batch', 'transmittal'])
+                ->get()
+                ->sortBy(function($model) use ($selectedItemIds) {
+                    return array_search($model->id, $selectedItemIds);
+                })->values();
 
             $firstItem = $items->first();
             $brand = $request->input('brand') ?: ($firstItem?->brand ?? null);
@@ -183,8 +190,10 @@ class OutgoingController extends Controller
 
         $availableItems = InventoryItem::with('batch')
             ->where('stock_status', 'IN_STOCK')
-            ->orderBy('batch_id')
-            ->orderBy('item_no')
+            ->orderByRaw("CASE WHEN box_no IS NULL OR box_no = '' THEN 1 ELSE 0 END ASC")
+            ->orderByRaw("LENGTH(box_no) ASC, box_no ASC")
+            ->orderBy('item_no', 'asc')
+            ->orderBy('id', 'asc')
             ->get();
 
         $batches = Batch::where('in_stock_quantity', '>', 0)->get();

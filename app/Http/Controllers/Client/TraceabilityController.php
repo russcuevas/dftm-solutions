@@ -29,6 +29,8 @@ class TraceabilityController extends Controller
 
         $query = $this->getClientItemsQuery($companyName)
             ->with(['batch', 'transmittal'])
+            ->orderByRaw("CASE WHEN box_no IS NULL OR box_no = '' THEN 1 ELSE 0 END ASC")
+            ->orderByRaw("LENGTH(box_no) ASC, box_no ASC")
             ->orderBy('item_no', 'asc')
             ->orderBy('id', 'asc');
 
@@ -102,7 +104,12 @@ class TraceabilityController extends Controller
         $batchId = $request->input('batch_id');
 
         $batchObj = $this->getClientBatchesQuery($companyName)->findOrFail($batchId);
-        $items = $batchObj->items()->orderBy('item_no', 'asc')->get();
+        $items = $batchObj->items()
+            ->orderByRaw("CASE WHEN box_no IS NULL OR box_no = '' THEN 1 ELSE 0 END ASC")
+            ->orderByRaw("LENGTH(box_no) ASC, box_no ASC")
+            ->orderBy('item_no', 'asc')
+            ->orderBy('id', 'asc')
+            ->get();
 
         $slipObj = null;
         $firstItem = $items->first();

@@ -296,7 +296,13 @@ class ComparingController extends Controller
             $defaultStatus = $request->input('status', 'GOOD');
             $notes = $request->input('notes');
 
-            $items = InventoryItem::whereIn('id', $selectedItemIds)->with('transmittal')->get();
+            // Collect items in exact scanned order
+            $items = InventoryItem::whereIn('id', $selectedItemIds)
+                ->with('transmittal')
+                ->get()
+                ->sortBy(function($model) use ($selectedItemIds) {
+                    return array_search($model->id, $selectedItemIds);
+                })->values();
             $firstItem = $items->first();
 
             $brand = $defaultBrand ?: ($firstItem?->brand ?? 'N/A');
@@ -321,10 +327,12 @@ class ComparingController extends Controller
                 'encoded_by' => Auth::id(),
             ]);
 
+            // Assign in sequential order (20 pcs per box: Box 1, Box 2...)
             foreach ($items as $index => $item) {
                 $diag = !empty($rowDiagnostics[$item->id]) ? trim($rowDiagnostics[$item->id]) : ($item->technical_diagnostic ?: 'Test and Clean');
                 $part = !empty($rowParts[$item->id]) ? trim($rowParts[$item->id]) : ($item->replace_parts ?: 'GOOD');
-                $box = !empty($rowBoxes[$item->id]) ? trim($rowBoxes[$item->id]) : $item->box_no;
+                $autoBox = 'B' . (floor($index / 20) + 1);
+                $box = !empty($rowBoxes[$item->id]) ? trim($rowBoxes[$item->id]) : ($item->box_no ?: $autoBox);
                 $stat = !empty($rowStatuses[$item->id]) ? trim($rowStatuses[$item->id]) : ($defaultStatus ?: 'GOOD');
 
                 $item->update([

@@ -118,7 +118,7 @@
                     <td><small>{{ $item->technical_diagnostic ?? '-' }}</small></td>
                     <td><small>{{ $item->replace_parts ?? '-' }}</small></td>
                     <td>
-                        <span class="badge {{ $item->repair_status === 'Repaired' ? 'badge-repaired' : ($item->repair_status === 'BER' ? 'badge-ber' : 'badge-in-process') }}">
+                        <span class="badge {{ in_array($item->repair_status, ['GOOD', 'Good', 'good']) ? 'badge-repaired' : ($item->repair_status === 'Repaired' ? 'badge-repaired' : ($item->repair_status === 'BER' ? 'badge-ber' : 'badge-in-process')) }}">
                             {{ $item->repair_status ?? 'In process' }}
                         </span>
                     </td>

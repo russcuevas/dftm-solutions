@@ -12,7 +12,14 @@ class InventoryController extends Controller
 {
     public function index(Request $request)
     {
-        $query = InventoryItem::with(['batch', 'transmittal', 'outgoingSlip', 'encoder'])->latest();
+        $query = InventoryItem::with(['batch', 'transmittal', 'outgoingSlip', 'encoder'])
+            ->orderByRaw("
+                CASE 
+                    WHEN UPPER(COALESCE(repair_status, '')) IN ('IN PROCESS', 'PENDING', 'IN_PROCESS', '') OR repair_status IS NULL THEN 1 
+                    ELSE 0 
+                END ASC
+            ")
+            ->latest('id');
 
         if ($request->filled('search')) {
             $search = $request->search;

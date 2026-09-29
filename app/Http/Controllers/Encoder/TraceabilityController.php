@@ -63,6 +63,8 @@ class TraceabilityController extends Controller
         }
 
         $query = InventoryItem::with(['batch', 'transmittal', 'encoder'])
+            ->orderByRaw("CASE WHEN box_no IS NULL OR box_no = '' THEN 1 ELSE 0 END ASC")
+            ->orderByRaw("LENGTH(box_no) ASC, box_no ASC")
             ->orderBy('item_no', 'asc')
             ->orderBy('id', 'asc');
 
@@ -161,7 +163,12 @@ class TraceabilityController extends Controller
         }
 
         $batch = DB::transaction(function () use ($request, $selectedItemIds) {
-            $items = InventoryItem::whereIn('id', $selectedItemIds)->with('transmittal')->get();
+            $items = InventoryItem::whereIn('id', $selectedItemIds)
+                ->with('transmittal')
+                ->get()
+                ->sortBy(function($model) use ($selectedItemIds) {
+                    return array_search($model->id, $selectedItemIds);
+                })->values();
             $firstItem = $items->first();
 
             $batchNo = $request->input('batch_no') ?: ('BATCH ' . (Batch::count() + 1));
@@ -187,11 +194,14 @@ class TraceabilityController extends Controller
 
             $oldBatchIds = $items->pluck('batch_id')->filter()->unique();
 
-            // Assign batch to items and ensure company_name is populated
+            // Assign batch to items and ensure sequential box numbering is populated (20 pcs per box)
             foreach ($items as $idx => $item) {
                 $targetCompany = $item->company_name ?: ($companyName !== 'DFTM DIGITAL SOLUTIONS' ? $companyName : ($item->transmittal?->company_name ?? $companyName));
+                $autoBox = 'B' . (floor($idx / 20) + 1);
                 $item->update([
                     'batch_id' => $batch->id,
+                    'item_no' => $idx + 1,
+                    'box_no' => $item->box_no ?: $autoBox,
                     'company_name' => $targetCompany,
                     'repair_status' => $item->repair_status ?: $defaultStatus,
                     'stock_status' => 'IN_STOCK',
@@ -355,6 +365,8 @@ class TraceabilityController extends Controller
         $batch = null;
 
         $query = InventoryItem::with(['batch', 'transmittal'])
+            ->orderByRaw("CASE WHEN box_no IS NULL OR box_no = '' THEN 1 ELSE 0 END ASC")
+            ->orderByRaw("LENGTH(box_no) ASC, box_no ASC")
             ->orderBy('item_no', 'asc')
             ->orderBy('id', 'asc');
 

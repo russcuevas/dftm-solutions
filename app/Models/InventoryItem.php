@@ -64,6 +64,7 @@ class InventoryItem extends Model
     public function getRepairStatusBadgeAttribute(): string
     {
         return match (strtoupper(str_replace(' ', '_', $this->repair_status ?? 'IN_PROCESS'))) {
+            'GOOD' => 'badge-repaired',
             'REPAIRED' => 'badge-repaired',
             'BER' => 'badge-ber',
             default => 'badge-in-process',

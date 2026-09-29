@@ -244,8 +244,10 @@
             <div style="display: flex; align-items: center; gap: 6px;">
                 <span style="font-size: 0.78rem; font-weight: 700; color: var(--dftm-slate);">DIAGNOSTIC:</span>
                 <input type="text" id="bulkDiagnosticInput" list="diagnosticSuggestions"
-                    class="form-control form-control-sm" placeholder="e.g. NO POWER / OK" style="width: 160px;">
+                    class="form-control form-control-sm" placeholder="e.g. Test & Clean, NO POWER" style="width: 170px;">
                 <datalist id="diagnosticSuggestions">
+                    <option value="Test and Clean">
+                    <option value="Test & Clean">
                     <option value="NO POWER">
                     <option value="CORRODED BOARD">
                     <option value="FIRMWARE CORRUPTED">

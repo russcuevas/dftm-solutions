@@ -34,7 +34,11 @@ class Batch extends Model
 
     public function items()
     {
-        return $this->hasMany(InventoryItem::class, 'batch_id')->orderBy('item_no', 'asc');
+        return $this->hasMany(InventoryItem::class, 'batch_id')
+            ->orderByRaw("CASE WHEN box_no IS NULL OR box_no = '' THEN 1 ELSE 0 END ASC")
+            ->orderByRaw("LENGTH(box_no) ASC, box_no ASC")
+            ->orderBy('item_no', 'asc')
+            ->orderBy('id', 'asc');
     }
 
     public function encoder()
