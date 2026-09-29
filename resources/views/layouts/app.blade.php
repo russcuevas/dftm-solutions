@@ -92,6 +92,13 @@
                                 <span>Master Inventory</span>
                             </a>
                         </li>
+                        <li class="menu-item">
+                            <a href="{{ route('admin.companies.index') }}"
+                                class="menu-link {{ request()->routeIs('admin.companies.*') ? 'active' : '' }}">
+                                <span class="menu-icon"><i class="bi bi-folder2-open"></i></span>
+                                <span>Company Folders</span>
+                            </a>
+                        </li>
                     @else
                         <!-- Consumable Portal Navigation -->
                         <li class="menu-heading">Consumable Management</li>

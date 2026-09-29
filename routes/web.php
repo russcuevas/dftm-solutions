@@ -10,6 +10,7 @@ use App\Http\Controllers\Admin\InventoryController as AdminInventoryController;
 use App\Http\Controllers\Admin\TraceabilityController as AdminTraceabilityController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\Admin\ClientController as AdminClientController;
+use App\Http\Controllers\Admin\CompanyFolderController as AdminCompanyFolderController;
 use App\Http\Controllers\Admin\ComparingController as AdminComparingController;
 use App\Http\Controllers\Admin\ConsumableInventoryController as AdminConsumableInventoryController;
 use App\Http\Controllers\Admin\ConsumableCategoryController as AdminConsumableCategoryController;
@@ -130,6 +131,10 @@ Route::middleware(['admin'])->prefix('admin')->name('admin.')->group(function ()
     Route::post('/clients', [AdminClientController::class, 'store'])->name('clients.store');
     Route::put('/clients/{id}', [AdminClientController::class, 'update'])->name('clients.update');
     Route::delete('/clients/{id}', [AdminClientController::class, 'destroy'])->name('clients.destroy');
+
+    // Company Folders & Individual Dashboards
+    Route::get('/company-folders', [AdminCompanyFolderController::class, 'index'])->name('companies.index');
+    Route::get('/company-folders/{id}/dashboard', [AdminCompanyFolderController::class, 'dashboard'])->name('companies.dashboard');
 
     // Consumable Portal Routes
     Route::prefix('consumables')->name('consumables.')->group(function () {
