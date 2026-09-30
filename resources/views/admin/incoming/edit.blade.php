@@ -282,9 +282,7 @@
                                 </div>
                                 <div>
                                     <input type="text" name="row_model[]" class="form-control row-model"
-                                        value="{{ $item->model ?: $transmittal->model }}" placeholder="Model" readonly
-                                        tabindex="-1"
-                                        style="background: #F8FAFC; color: #475569; border-color: #E2E8F0; cursor: default;">
+                                        value="{{ $item->model ?: $transmittal->model }}" placeholder="Model">
                                 </div>
                                 <div>
                                     <input type="text" name="row_brand[]" class="form-control row-brand"
@@ -315,8 +313,7 @@
                                 <div><input type="text" name="mac_address[]" class="form-control mono row-mac"
                                         placeholder="Scan MAC Address"></div>
                                 <div><input type="text" name="row_model[]" class="form-control row-model"
-                                        value="{{ $transmittal->model }}" placeholder="Model" readonly tabindex="-1"
-                                        style="background: #F8FAFC; color: #475569; border-color: #E2E8F0; cursor: default;">
+                                        value="{{ $transmittal->model }}" placeholder="Model">
                                 </div>
                                 <div><input type="text" name="row_brand[]" class="form-control row-brand"
                                         value="{{ $transmittal->brand }}" placeholder="Brand" readonly tabindex="-1"
@@ -526,7 +523,7 @@
                         <input type="text" name="mac_address[]" class="form-control mono row-mac" placeholder="Scan MAC Address">
                     </div>
                     <div>
-                        <input type="text" name="row_model[]" class="form-control row-model" value="${modelVal}" placeholder="Model" readonly tabindex="-1" style="background: #F8FAFC; color: #475569; border-color: #E2E8F0; cursor: default;">
+                        <input type="text" name="row_model[]" class="form-control row-model" value="${modelVal}" placeholder="Model">
                     </div>
                     <div>
                         <input type="text" name="row_brand[]" class="form-control row-brand" value="${brandVal}" placeholder="Brand" readonly tabindex="-1" style="background: #F8FAFC; color: #475569; border-color: #E2E8F0; cursor: default;">
@@ -637,6 +634,15 @@
                     delBtn.onclick = function(e) {
                         e.preventDefault();
                         e.stopPropagation();
+
+                        const itemIdVal = row.querySelector('.row-item-id')?.value;
+                        if (itemIdVal) {
+                            const delInput = document.createElement('input');
+                            delInput.type = 'hidden';
+                            delInput.name = 'deleted_item_ids[]';
+                            delInput.value = itemIdVal;
+                            document.getElementById('editIncomingForm').appendChild(delInput);
+                        }
 
                         const allRows = container.querySelectorAll('.subtable-row');
                         if (allRows.length === 1) {

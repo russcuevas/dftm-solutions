@@ -58,7 +58,65 @@
             $itemsByModel = $transmittal->items->groupBy(function($it) {
                 return trim($it->model ?: 'Unassigned Model');
             });
+
+            $itemsWithBarcodes = $transmittal->items->filter(function($it) {
+                return !empty($it->serial_number) || !empty($it->mac_address);
+            });
+
+            $itemsByEncoder = $itemsWithBarcodes->groupBy(function($it) {
+                return $it->encoder?->name ?? 'System / Unassigned';
+            });
+            $totalEncodedUnits = $itemsWithBarcodes->count();
         @endphp
+
+        <!-- Encoder Performance & Activity Breakdown -->
+        <div style="background: #FFFFFF; border: 1px solid var(--dftm-border); border-radius: var(--radius-md); padding: 18px 20px; margin-bottom: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 10px;">
+                <div style="font-weight: 800; color: var(--dftm-navy); font-size: 0.95rem; display: flex; align-items: center; gap: 8px;">
+                    <i class="bi bi-person-badge-fill" style="color: var(--dftm-accent);"></i> Encoder Monitoring & Work Breakdown
+                </div>
+                <div style="font-size: 0.8rem; color: var(--dftm-slate);">
+                    Total Rows with Barcodes: <strong style="color: var(--dftm-navy);">{{ $totalEncodedUnits }} units</strong>
+                </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px;">
+                @forelse($itemsByEncoder as $encoderName => $encoderItems)
+                    @php
+                        $encCount = $encoderItems->count();
+                        $percentage = $totalEncodedUnits > 0 ? round(($encCount / $totalEncodedUnits) * 100, 1) : 0;
+                        $latestTime = $encoderItems->max('updated_at') ?? $encoderItems->max('created_at');
+                    @endphp
+                    <div style="background: #F8FAFC; border: 1px solid var(--dftm-border); border-radius: 8px; padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <div style="width: 40px; height: 40px; border-radius: 50%; background: #EEF2FF; color: #4F46E5; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 1.1rem;">
+                                <i class="bi bi-person-fill"></i>
+                            </div>
+                            <div>
+                                <div style="font-weight: 800; color: var(--dftm-navy); font-size: 0.92rem;">
+                                    {{ $encoderName }}
+                                </div>
+                                <div style="font-size: 0.76rem; color: var(--dftm-slate); margin-top: 2px;">
+                                    <i class="bi bi-clock-history"></i> Last scan: {{ $latestTime ? \Carbon\Carbon::parse($latestTime)->format('M d, Y h:i A') : 'N/A' }}
+                                </div>
+                            </div>
+                        </div>
+                        <div style="text-align: right;">
+                            <div style="font-weight: 800; font-size: 1.15rem; color: #00205B;">
+                                {{ $encCount }} <span style="font-size: 0.75rem; font-weight: 600; color: var(--dftm-slate);">units</span>
+                            </div>
+                            <span class="badge" style="background: #E0E7FF; color: #3730A3; font-size: 0.72rem; font-weight: 700; padding: 3px 8px;">
+                                {{ $percentage }}% of sheet
+                            </span>
+                        </div>
+                    </div>
+                @empty
+                    <div style="color: var(--dftm-slate); font-size: 0.85rem; font-style: italic; padding: 8px;">
+                        No barcodes encoded yet by any encoder.
+                    </div>
+                @endforelse
+            </div>
+        </div>
 
         <!-- Grouped Per Model Section ("isang buo pero naka per model lang") -->
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
@@ -89,6 +147,7 @@
                                 <th>SERIAL NUMBER</th>
                                 <th>MAC ADDRESS</th>
                                 <th>BRAND</th>
+                                <th>ENCODED BY</th>
                                 <th>BATCH STATUS</th>
                             </tr>
                         </thead>
@@ -99,6 +158,15 @@
                                 <td><span class="mono" style="font-weight: 700; color: var(--dftm-navy);">{{ $item->serial_number ?? '-' }}</span></td>
                                 <td><span class="mono">{{ $item->mac_address ?? '-' }}</span></td>
                                 <td>{{ $item->brand ?? '-' }}</td>
+                                <td>
+                                    @if($item->encoder)
+                                        <span class="badge" style="background: #F1F5F9; color: #334155; font-size: 0.75rem; font-weight: 600; border: 1px solid #E2E8F0; display: inline-flex; align-items: center; gap: 4px;">
+                                            <i class="bi bi-person"></i> {{ $item->encoder->name }}
+                                        </span>
+                                    @else
+                                        <span style="color: #94A3B8; font-size: 0.78rem;">-</span>
+                                    @endif
+                                </td>
                                 <td>
                                     @if($item->batch_id)
                                         <span class="badge badge-stock">{{ $item->batch->batch_no ?? 'BATCH' }}</span>

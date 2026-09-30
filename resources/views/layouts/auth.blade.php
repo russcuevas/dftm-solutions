@@ -4,6 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>@yield('title', 'Login') - DFTM Solutions</title>
+    <!-- Favicon -->
+    <link rel="icon" type="image/jpeg" href="{{ asset('images/favicon.jpg') }}?v={{ file_exists(public_path('images/favicon.jpg')) ? filemtime(public_path('images/favicon.jpg')) : time() }}">
+    <link rel="shortcut icon" type="image/jpeg" href="{{ asset('images/favicon.jpg') }}">
+    <link rel="apple-touch-icon" href="{{ asset('images/favicon.jpg') }}">
+
     <link rel="stylesheet" href="{{ asset('css/dftm-theme.css') }}">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <style>

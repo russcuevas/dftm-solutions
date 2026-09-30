@@ -134,7 +134,7 @@ class IncomingController extends Controller
 
     public function show($id)
     {
-        $transmittal = Transmittal::with(['items', 'encoder'])->findOrFail($id);
+        $transmittal = Transmittal::with(['items.encoder', 'encoder'])->findOrFail($id);
         return view('admin.incoming.show', compact('transmittal'));
     }
 
@@ -180,6 +180,14 @@ class IncomingController extends Controller
                 'notes' => $request->input('notes', $transmittal->notes),
             ]);
 
+            $deletedIds = $request->input('deleted_item_ids', []);
+            if (!empty($deletedIds) && is_array($deletedIds)) {
+                InventoryItem::where('transmittal_id', $transmittal->id)
+                    ->whereIn('id', array_filter($deletedIds))
+                    ->where('stock_status', 'IN_STOCK')
+                    ->delete();
+            }
+
             $itemIds = $request->input('item_id', []);
             $serials = $request->input('serial_number', []);
             $macs = $request->input('mac_address', []);
@@ -193,7 +201,7 @@ class IncomingController extends Controller
             $seenSerialsInForm = [];
 
             if (is_array($serials)) {
-                $itemNo = 1;
+                $maxItemNo = InventoryItem::where('transmittal_id', $transmittal->id)->max('item_no') ?? 0;
                 foreach ($serials as $i => $sn) {
                     $itemId = $itemIds[$i] ?? null;
                     $mac = $macs[$i] ?? null;
@@ -242,22 +250,28 @@ class IncomingController extends Controller
                     if ($itemId) {
                         $item = InventoryItem::where('transmittal_id', $transmittal->id)->find($itemId);
                         if ($item) {
-                            $item->update([
-                                'item_no' => $itemNo++,
+                            $updatePayload = [
                                 'brand' => $rowBrand ?: $item->brand,
                                 'model' => $rowModel ?: $item->model,
                                 'serial_number' => $snTrimmed,
                                 'mac_address' => $mac ? trim($mac) : null,
                                 'box_no' => $box ? trim($box) : null,
                                 'company_name' => $transmittal->company_name,
-                            ]);
+                            ];
+                            // Tag encoder when item has SN or MAC and either has no encoder or was edited
+                            if (!empty($snTrimmed) || !empty($mac)) {
+                                if (empty($item->encoded_by) || $item->serial_number !== $snTrimmed || $item->mac_address !== ($mac ? trim($mac) : null)) {
+                                    $updatePayload['encoded_by'] = Auth::id();
+                                }
+                            }
+                            $item->update($updatePayload);
                             $keptIds[] = $item->id;
                             $savedCount++;
                         }
                     } else {
                         $newItem = InventoryItem::create([
                             'transmittal_id' => $transmittal->id,
-                            'item_no' => $itemNo++,
+                            'item_no' => ++$maxItemNo,
                             'brand' => $rowBrand ?: $transmittal->brand,
                             'model' => $rowModel ?: $transmittal->model,
                             'serial_number' => $snTrimmed,
@@ -277,11 +291,17 @@ class IncomingController extends Controller
                 }
             }
 
-            // Remove items removed from form if still IN_STOCK
-            InventoryItem::where('transmittal_id', $transmittal->id)
-                ->where('stock_status', 'IN_STOCK')
-                ->whereNotIn('id', $keptIds)
-                ->delete();
+            // Re-sequence item_no for all items in the transmittal to keep clean 1..N order
+            $allItems = InventoryItem::where('transmittal_id', $transmittal->id)
+                ->orderBy('item_no', 'asc')
+                ->orderBy('id', 'asc')
+                ->get();
+            foreach ($allItems as $seqIndex => $transmittalItem) {
+                $targetNo = $seqIndex + 1;
+                if ($transmittalItem->item_no !== $targetNo) {
+                    $transmittalItem->update(['item_no' => $targetNo]);
+                }
+            }
 
             $transmittal->recalculateQuantities();
             ActivityLog::log('INCOMING_UPDATED', "Updated Incoming Transmittal {$transmittal->transmittal_no}. Saved: {$savedCount} items.");
@@ -466,14 +486,18 @@ class IncomingController extends Controller
         if ($itemId) {
             $item = InventoryItem::where('transmittal_id', $transmittal->id)->find($itemId);
             if ($item) {
-                $item->update([
+                $itemPayload = [
                     'serial_number' => $sn,
                     'mac_address' => $mac,
                     'box_no' => $box,
                     'brand' => $rowBrand ?: $item->brand,
                     'model' => $rowModel ?: $item->model,
                     'company_name' => $transmittal->company_name,
-                ]);
+                ];
+                if (!empty($sn) || !empty($mac)) {
+                    $itemPayload['encoded_by'] = Auth::id();
+                }
+                $item->update($itemPayload);
             }
         } else {
             // Only create if at least one field has data

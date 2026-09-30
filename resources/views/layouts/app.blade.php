@@ -7,6 +7,11 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'Inventory & Repair System') - DFTM Solutions</title>
 
+    <!-- Favicon -->
+    <link rel="icon" type="image/jpeg" href="{{ asset('images/favicon.jpg') }}?v={{ file_exists(public_path('images/favicon.jpg')) ? filemtime(public_path('images/favicon.jpg')) : time() }}">
+    <link rel="shortcut icon" type="image/jpeg" href="{{ asset('images/favicon.jpg') }}">
+    <link rel="apple-touch-icon" href="{{ asset('images/favicon.jpg') }}">
+
     <!-- DFTM Enterprise Theme CSS -->
     <link rel="stylesheet" href="{{ asset('css/dftm-theme.css') }}?v={{ file_exists(public_path('css/dftm-theme.css')) ? filemtime(public_path('css/dftm-theme.css')) : time() }}">
 
