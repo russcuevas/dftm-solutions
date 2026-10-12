@@ -24,10 +24,18 @@
         </div>
 
         <div class="form-group" style="margin-bottom: 24px;">
-            <label class="form-label" for="passwordInput">Password</label>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                <label class="form-label" for="passwordInput" style="margin-bottom: 0;">Password</label>
+                <a href="{{ route('password.request') }}" style="font-size: 0.82rem; color: #0284c7; text-decoration: none; font-weight: 600;">
+                    Forgot Password?
+                </a>
+            </div>
             <div style="position: relative;">
-                <input type="password" name="password" id="passwordInput" class="form-control" placeholder="Enter your password" required style="padding-left: 38px;">
+                <input type="password" name="password" id="passwordInput" class="form-control" placeholder="Enter your password" required style="padding-left: 38px; padding-right: 38px;">
                 <i class="bi bi-lock" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--dftm-slate-light); font-size: 1.1rem;"></i>
+                <button type="button" onclick="togglePassword()" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: var(--dftm-slate); padding: 4px;">
+                    <i class="bi bi-eye" id="toggleIcon"></i>
+                </button>
             </div>
         </div>
 
@@ -36,4 +44,20 @@
         </button>
     </form>
 </div>
+
+<script>
+    function togglePassword() {
+        const input = document.getElementById('passwordInput');
+        const icon = document.getElementById('toggleIcon');
+        if (input.type === 'password') {
+            input.type = 'text';
+            icon.classList.remove('bi-eye');
+            icon.classList.add('bi-eye-slash');
+        } else {
+            input.type = 'password';
+            icon.classList.remove('bi-eye-slash');
+            icon.classList.add('bi-eye');
+        }
+    }
+</script>
 @endsection

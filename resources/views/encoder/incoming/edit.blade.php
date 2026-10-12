@@ -269,9 +269,8 @@
                                         value="{{ $item->model ?: $transmittal->model }}" placeholder="Model">
                                 </div>
                                 <div>
-                                    <input type="text" name="row_brand[]" class="form-control row-brand"
-                                        value="{{ $item->brand ?: $transmittal->brand }}" placeholder="Brand" readonly tabindex="-1"
-                                        style="background: #F8FAFC; color: #475569; border-color: #E2E8F0; cursor: default;">
+                                    <input type="text" name="row_brand[]" list="brandSuggestions" class="form-control row-brand"
+                                        value="{{ $item->brand ?: $transmittal->brand }}" placeholder="Brand">
                                 </div>
                                 <div class="row-status-indicator"
                                     style="display: flex; align-items: center; justify-content: center; font-size: 0.9rem;">
@@ -297,9 +296,8 @@
                                         placeholder="Scan MAC Address"></div>
                                 <div><input type="text" name="row_model[]" class="form-control row-model"
                                         value="{{ $transmittal->model }}" placeholder="Model"></div>
-                                <div><input type="text" name="row_brand[]" class="form-control row-brand"
-                                        value="{{ $transmittal->brand }}" placeholder="Brand" readonly tabindex="-1"
-                                        style="background: #F8FAFC; color: #475569; border-color: #E2E8F0; cursor: default;"></div>
+                                <div><input type="text" name="row_brand[]" list="brandSuggestions" class="form-control row-brand"
+                                        value="{{ $transmittal->brand }}" placeholder="Brand"></div>
                                 <div class="row-status-indicator"
                                     style="display: flex; align-items: center; justify-content: center; font-size: 0.9rem;">
                                 </div>
@@ -506,7 +504,7 @@
                         <input type="text" name="row_model[]" class="form-control row-model" value="${modelVal}" placeholder="Model">
                     </div>
                     <div>
-                        <input type="text" name="row_brand[]" class="form-control row-brand" value="${brandVal}" placeholder="Brand" readonly tabindex="-1" style="background: #F8FAFC; color: #475569; border-color: #E2E8F0; cursor: default;">
+                        <input type="text" name="row_brand[]" list="brandSuggestions" class="form-control row-brand" value="${brandVal}" placeholder="Brand">
                     </div>
                     <div class="row-status-indicator" style="display: flex; align-items: center; justify-content: center; font-size: 0.9rem;"></div>
                     <div style="display: flex; align-items: center; justify-content: center;">
