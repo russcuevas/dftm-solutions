@@ -97,6 +97,11 @@ Route::middleware(['admin'])->prefix('admin')->name('admin.')->group(function ()
     Route::get('/comparing/company-units', [AdminComparingController::class, 'getCompanyUnits'])->name('comparing.companyUnits');
     Route::post('/comparing/scan', [AdminComparingController::class, 'verifyScan'])->name('comparing.scan');
     Route::post('/comparing/create-batch', [AdminComparingController::class, 'storeBatch'])->name('comparing.storeBatch');
+    Route::get('/comparing/drafts', [AdminComparingController::class, 'getDrafts'])->name('comparing.drafts');
+    Route::get('/comparing/drafts/{id}', [AdminComparingController::class, 'getDraft'])->name('comparing.drafts.show');
+    Route::post('/comparing/drafts', [AdminComparingController::class, 'saveDraft'])->name('comparing.drafts.store');
+    Route::post('/comparing/drafts/{id}/rename', [AdminComparingController::class, 'renameDraft'])->name('comparing.drafts.rename');
+    Route::delete('/comparing/drafts/{id}', [AdminComparingController::class, 'destroyDraft'])->name('comparing.drafts.destroy');
 
     // Traceability Matrix & Batches
     Route::get('/traceability/lookup', [AdminTraceabilityController::class, 'lookup'])->name('traceability.lookup');
@@ -197,6 +202,11 @@ Route::middleware(['encoder'])->prefix('encoder')->name('encoder.')->group(funct
     Route::get('/comparing/company-units', [EncoderComparingController::class, 'getCompanyUnits'])->name('comparing.companyUnits');
     Route::post('/comparing/scan', [EncoderComparingController::class, 'verifyScan'])->name('comparing.scan');
     Route::post('/comparing/create-batch', [EncoderComparingController::class, 'storeBatch'])->name('comparing.storeBatch');
+    Route::get('/comparing/drafts', [EncoderComparingController::class, 'getDrafts'])->name('comparing.drafts');
+    Route::get('/comparing/drafts/{id}', [EncoderComparingController::class, 'getDraft'])->name('comparing.drafts.show');
+    Route::post('/comparing/drafts', [EncoderComparingController::class, 'saveDraft'])->name('comparing.drafts.store');
+    Route::post('/comparing/drafts/{id}/rename', [EncoderComparingController::class, 'renameDraft'])->name('comparing.drafts.rename');
+    Route::delete('/comparing/drafts/{id}', [EncoderComparingController::class, 'destroyDraft'])->name('comparing.drafts.destroy');
 
     // Traceability Matrix & Batches
     Route::get('/traceability/lookup', [EncoderTraceabilityController::class, 'lookup'])->name('traceability.lookup');

@@ -8,12 +8,15 @@ use App\Models\Batch;
 use App\Models\Transmittal;
 use App\Models\ActivityLog;
 use App\Models\User;
+use App\Models\ComparingDraft;
+use App\Traits\ComparingDraftsTrait;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 
 class ComparingController extends Controller
 {
+    use ComparingDraftsTrait;
     /**
      * Display the Comparing & Batch Creation interface
      */
@@ -369,6 +372,10 @@ class ComparingController extends Controller
 
             return $batch;
         });
+
+        if ($request->filled('draft_id')) {
+            ComparingDraft::destroy($request->input('draft_id'));
+        }
 
         return redirect()->route('admin.traceability.index', ['batch_id' => $batch->id])
             ->with('success', "Comparing Complete! Batch '{$batch->batch_no}' successfully created with {$batch->total_quantity} units. Now open in Traceability Matrix.");

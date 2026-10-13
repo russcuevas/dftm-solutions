@@ -203,6 +203,122 @@
             font-size: 0.78rem;
             font-weight: 700;
         }
+
+        @keyframes spin {
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .spin-icon {
+            display: inline-block;
+            animation: spin 1s linear infinite;
+        }
+
+        .draft-badge-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 5px 12px;
+            border-radius: 6px;
+            font-size: 0.82rem;
+            font-weight: 700;
+            background: #F8FAFC;
+            border: 1px solid #CBD5E1;
+            color: #334155;
+            transition: all 0.2s ease;
+        }
+
+        .draft-badge-indicator.saving {
+            background: #EFF6FF;
+            border-color: #93C5FD;
+            color: #1D4ED8;
+        }
+
+        .draft-badge-indicator.saved {
+            background: #F0FDF4;
+            border-color: #86EFAC;
+            color: #15803D;
+        }
+
+        #draftAlertBanner {
+            display: none;
+            background: #EFF6FF;
+            border: 1.5px solid #3B82F6;
+            border-left: 5px solid #2563EB;
+            border-radius: 6px;
+            padding: 10px 16px;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 10px;
+            box-shadow: 0 2px 6px rgba(59, 130, 246, 0.08);
+        }
+
+        /* Saved Drafts Manager Modal */
+        .lookup-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(15, 23, 42, 0.65);
+            backdrop-filter: blur(3px);
+            z-index: 99999;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .lookup-modal.active {
+            display: flex;
+        }
+
+        .lookup-modal-content {
+            background: #FFFFFF;
+            width: 94%;
+            max-width: 820px;
+            border-radius: 12px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+            animation: modalPopIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes modalPopIn {
+            from {
+                transform: scale(0.95);
+                opacity: 0;
+            }
+            to {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        .draft-item-card {
+            background: #FFFFFF;
+            border: 1.5px solid #E2E8F0;
+            border-radius: 8px;
+            padding: 14px 18px;
+            margin-bottom: 12px;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 14px;
+            flex-wrap: wrap;
+        }
+
+        .draft-item-card:hover {
+            border-color: #3B82F6;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.1);
+        }
+
+        .draft-item-card.is-active-draft {
+            border-color: #10B981;
+            background: #F0FDF4;
+            box-shadow: 0 0 0 1px #10B981;
+        }
     </style>
 @endpush
 
@@ -219,17 +335,26 @@
             $traceabilityIndexUrl = $isEncoder
                 ? route('encoder.traceability.index')
                 : route('admin.traceability.index');
+            $draftsApiUrl = $isEncoder
+                ? route('encoder.comparing.drafts')
+                : route('admin.comparing.drafts');
         @endphp
 
         <!-- Top Navigation & Action Toolbar -->
         <div class="matrix-action-bar">
-            <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+            <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
                 <a href="{{ $traceabilityIndexUrl }}" class="btn btn-outline btn-sm">
                     <i class="bi bi-arrow-left"></i> View Traceability Records
                 </a>
+
+                <!-- Live Auto-Save Draft Status Indicator -->
+                <div id="draftStatusIndicator" class="draft-badge-indicator" title="Kusang nag-sa-save ang iyong batch progress bawat scan">
+                    <i class="bi bi-cloud text-muted" id="draftStatusIcon"></i>
+                    <span id="draftStatusText">Auto-save: Ready</span>
+                </div>
             </div>
 
-            <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
                 <button type="button" id="btnAudioToggle" class="btn btn-outline btn-sm"
                     style="font-size: 0.8rem; font-weight: 600;">
                     <i class="bi bi-volume-up-fill" id="audioIcon"></i> Sound: ON
@@ -238,9 +363,57 @@
                     style="font-weight: 700; background: #475569; color: #FFF; border: none;">
                     <i class="bi bi-plus-lg"></i> + Add Row
                 </button>
+
+                <!-- Saved Drafts Manager Modal Trigger -->
+                <button type="button" id="btnOpenDraftsModal" class="btn btn-outline btn-sm"
+                    style="font-weight: 700; color: #1E3A8A; border-color: #93C5FD; background: #F0F9FF; display: inline-flex; align-items: center; gap: 6px;"
+                    title="Tingnan at gamitin ang mga naka-save na drafts">
+                    <i class="bi bi-folder2-open" style="color: #2563EB;"></i> Saved Drafts
+                    <span id="draftsCountBadge" class="badge" style="background: #2563EB; color: #FFF; font-size: 0.72rem; padding: 2px 7px; border-radius: 10px;">0</span>
+                </button>
+
+                <!-- New Clean Batch Button -->
+                <button type="button" id="btnStartNewBatch" class="btn btn-outline btn-sm"
+                    style="font-weight: 700; color: #475569; border-color: #CBD5E1; background: #FFFFFF;"
+                    title="Magsimula ng panibagong batch spreadsheet nang hindi nabubura ang mga naka-save na drafts">
+                    <i class="bi bi-plus-circle"></i> + New Batch
+                </button>
+
+                <!-- Save Draft Button -->
+                <button type="button" id="btnTopSaveDraft" class="btn btn-outline btn-sm"
+                    style="font-weight: 700; color: #1D4ED8; border-color: #93C5FD; background: #EFF6FF;"
+                    title="I-save o i-update ang kasalukuyang spreadsheet bilang draft">
+                    <i class="bi bi-floppy"></i> Save Draft
+                </button>
+
                 <button type="button" id="btnTopSaveBatch" class="btn btn-sm"
                     style="background: #059669; color: #FFFFFF; font-weight: 700; border: none; padding: 6px 18px;">
                     <i class="bi bi-check2-circle"></i> Save Batch to Traceability
+                </button>
+            </div>
+        </div>
+
+        <!-- Draft Alert / Active Draft Banner -->
+        <div id="draftAlertBanner">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <i class="bi bi-folder-check" style="color: #2563EB; font-size: 1.35rem;"></i>
+                <div style="font-size: 0.88rem; color: #1E3A8A;">
+                    <strong id="draftAlertTitle">Aktibong Draft:</strong>
+                    <span id="draftAlertDesc">Ipinagpapatuloy ang huling ginagawa. Kusang nag-sa-save bawat scan o pagbabago.</span>
+                </div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                <button type="button" id="btnBannerOpenDrafts" class="btn btn-sm"
+                    style="background: #FFFFFF; color: #1E3A8A; border: 1.5px solid #93C5FD; font-weight: 700; font-size: 0.82rem; padding: 5px 14px;">
+                    <i class="bi bi-folder2-open"></i> Pumili ng Ibang Draft
+                </button>
+                <button type="button" id="btnBannerSaveDraft" class="btn btn-sm"
+                    style="background: #2563EB; color: #FFFFFF; font-weight: 700; font-size: 0.82rem; border: none; padding: 5px 14px;">
+                    <i class="bi bi-floppy"></i> Save Draft
+                </button>
+                <button type="button" id="btnBannerNewBatch" class="btn btn-sm"
+                    style="background: #FFFFFF; color: #475569; border: 1px solid #CBD5E1; font-weight: 700; font-size: 0.82rem; padding: 5px 14px;">
+                    <i class="bi bi-plus-circle"></i> Bagong Batch
                 </button>
             </div>
         </div>
@@ -255,6 +428,7 @@
         <form action="{{ $storeRoute }}" method="POST" id="storeBatchComparingForm">
             @csrf
             <input type="hidden" name="company_name" id="formCompanyNameInput" value="{{ $selectedCompany }}">
+            <input type="hidden" name="draft_id" id="formDraftIdInput" value="">
 
             <div class="excel-sheet-wrapper">
                 <table class="excel-matrix-table" id="directTraceabilityTable">
@@ -426,7 +600,15 @@
                     <span>Remaining Unbatched: <strong id="footerRemainingCount" style="color: #D97706;">0</strong></span>
                 </div>
 
-                <div style="display: flex; align-items: center; gap: 10px;">
+                <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                    <button type="button" class="btn btn-outline btn-sm" id="btnBottomOpenDrafts"
+                        style="font-weight: 700; color: #1E3A8A; border-color: #93C5FD; background: #F0F9FF; padding: 8px 16px;">
+                        <i class="bi bi-folder2-open"></i> Saved Drafts (<span class="drafts-count-num">0</span>)
+                    </button>
+                    <button type="button" class="btn btn-outline btn-sm" id="btnBottomSaveDraft"
+                        style="font-weight: 700; color: #1D4ED8; border-color: #93C5FD; background: #EFF6FF; padding: 8px 18px;">
+                        <i class="bi bi-floppy"></i> Save Draft
+                    </button>
                     <button type="submit" class="btn btn-primary" id="btnBottomSaveBatch"
                         style="background: #059669; border-color: #059669; padding: 8px 24px; font-weight: 700; font-size: 0.95rem;">
                         <i class="bi bi-check2-circle"></i> Save Batch to Traceability
@@ -435,6 +617,46 @@
             </div>
         </form>
 
+    </div>
+
+    <!-- Saved Drafts Manager Modal -->
+    <div class="lookup-modal" id="savedDraftsModal">
+        <div class="lookup-modal-content">
+            <div style="background: #1E3A8A; color: #FFFFFF; padding: 14px 20px; display: flex; align-items: center; justify-content: space-between;">
+                <div style="font-weight: 700; font-size: 1.05rem; display: flex; align-items: center; gap: 8px;">
+                    <i class="bi bi-folder2-open" style="color: #60A5FA;"></i> Mga Naka-save na Batch Drafts
+                </div>
+                <button type="button" id="btnCloseDraftsModal" style="background: transparent; border: none; color: #FFFFFF; font-size: 1.25rem; cursor: pointer; padding: 0;">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+
+            <div style="padding: 14px 20px; background: #F8FAFC; border-bottom: 1px solid #E2E8F0; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+                <div style="position: relative; flex: 1; min-width: 240px;">
+                    <i class="bi bi-search" style="position: absolute; left: 10px; top: 9px; color: #94A3B8;"></i>
+                    <input type="text" id="draftSearchInput" class="excel-cell-input" style="padding-left: 32px; border: 1px solid #CBD5E1; border-radius: 6px; background: #FFF; height: 36px; font-weight: 600;" placeholder="Mag-search ng draft (Company, Batch #, o Pangalan)...">
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <button type="button" id="btnModalNewBatch" class="btn btn-outline btn-sm" style="font-weight: 700; background: #FFF;">
+                        <i class="bi bi-plus-circle"></i> Bagong Batch
+                    </button>
+                    <button type="button" id="btnModalSaveCurrentAsNew" class="btn btn-sm btn-primary" style="font-weight: 700; background: #2563EB;">
+                        <i class="bi bi-plus-lg"></i> I-save bilang Bagong Draft
+                    </button>
+                </div>
+            </div>
+
+            <div style="padding: 18px 20px; max-height: 480px; overflow-y: auto;">
+                <div id="draftsListContainer">
+                    <!-- Populated dynamically via JavaScript -->
+                </div>
+            </div>
+
+            <div style="background: #F8FAFC; border-top: 1px solid #E2E8F0; padding: 12px 20px; display: flex; align-items: center; justify-content: space-between;">
+                <span id="draftsTotalSummary" style="font-size: 0.85rem; font-weight: 600; color: #64748B;">0 drafts</span>
+                <button type="button" class="btn btn-outline btn-sm" id="btnCloseDraftsFooter">Isara (Close)</button>
+            </div>
+        </div>
     </div>
 
     @push('scripts')
@@ -466,6 +688,796 @@
                 const footerIncomingCount = document.getElementById('footerIncomingCount');
                 const footerVerifiedCount = document.getElementById('footerVerifiedCount');
                 const footerRemainingCount = document.getElementById('footerRemainingCount');
+
+                // --- DATABASE-BACKED MULTI-DRAFT PERSISTENCE ENGINE ---
+                const DRAFTS_API_URL = '{{ $draftsApiUrl }}';
+                const CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+                const USER_STORAGE_SUFFIX = '{{ auth()->id() ?? 'guest' }}';
+                const DRAFTS_LIST_KEY = 'dftm_comparing_drafts_' + USER_STORAGE_SUFFIX;
+                const ACTIVE_DRAFT_KEY = 'dftm_comparing_active_draft_id_' + USER_STORAGE_SUFFIX;
+                const OLD_SINGLE_DRAFT_KEY = 'dftm_comparing_draft_' + USER_STORAGE_SUFFIX;
+
+                let currentDraftId = localStorage.getItem(ACTIVE_DRAFT_KEY) || null;
+                let isRestoringDraft = false;
+                let autoSaveDebounceTimer = null;
+                let cachedDraftsList = [];
+
+                const draftStatusIndicator = document.getElementById('draftStatusIndicator');
+                const draftStatusIcon = document.getElementById('draftStatusIcon');
+                const draftStatusText = document.getElementById('draftStatusText');
+                const draftAlertBanner = document.getElementById('draftAlertBanner');
+                const draftAlertTitle = document.getElementById('draftAlertTitle');
+                const draftAlertDesc = document.getElementById('draftAlertDesc');
+                const formDraftIdInput = document.getElementById('formDraftIdInput');
+
+                // Toolbar & Action Buttons
+                const btnTopSaveDraft = document.getElementById('btnTopSaveDraft');
+                const btnBottomSaveDraft = document.getElementById('btnBottomSaveDraft');
+                const btnBannerSaveDraft = document.getElementById('btnBannerSaveDraft');
+                const btnOpenDraftsModal = document.getElementById('btnOpenDraftsModal');
+                const btnBottomOpenDrafts = document.getElementById('btnBottomOpenDrafts');
+                const btnBannerOpenDrafts = document.getElementById('btnBannerOpenDrafts');
+                const btnStartNewBatch = document.getElementById('btnStartNewBatch');
+                const btnBannerNewBatch = document.getElementById('btnBannerNewBatch');
+
+                // Modal Elements
+                const savedDraftsModal = document.getElementById('savedDraftsModal');
+                const btnCloseDraftsModal = document.getElementById('btnCloseDraftsModal');
+                const btnCloseDraftsFooter = document.getElementById('btnCloseDraftsFooter');
+                const draftSearchInput = document.getElementById('draftSearchInput');
+                const draftsListContainer = document.getElementById('draftsListContainer');
+                const draftsTotalSummary = document.getElementById('draftsTotalSummary');
+                const draftsCountBadge = document.getElementById('draftsCountBadge');
+                const btnModalNewBatch = document.getElementById('btnModalNewBatch');
+                const btnModalSaveCurrentAsNew = document.getElementById('btnModalSaveCurrentAsNew');
+
+                // Sync currentDraftId to hidden form input for batch submission cleanup
+                function syncActiveDraftInput() {
+                    if (formDraftIdInput) {
+                        formDraftIdInput.value = currentDraftId || '';
+                    }
+                }
+                syncActiveDraftInput();
+
+                // Fetch all drafts from the Database (with fallback to localStorage)
+                async function fetchDraftsFromDB() {
+                    try {
+                        const res = await fetch(DRAFTS_API_URL, {
+                            headers: {
+                                'Accept': 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest'
+                            }
+                        });
+                        const data = await res.json();
+                        if (data && data.success && Array.isArray(data.drafts)) {
+                            cachedDraftsList = data.drafts;
+                            try {
+                                localStorage.setItem(DRAFTS_LIST_KEY, JSON.stringify(cachedDraftsList));
+                            } catch (e) {}
+                            updateDraftBadges(cachedDraftsList.length);
+                            return cachedDraftsList;
+                        }
+                    } catch (err) {
+                        console.warn('Could not reach drafts API, loading from localStorage cache', err);
+                    }
+
+                    // Fallback to local cache if offline
+                    try {
+                        const local = localStorage.getItem(DRAFTS_LIST_KEY);
+                        if (local) {
+                            cachedDraftsList = JSON.parse(local);
+                        }
+                    } catch (e) {
+                        cachedDraftsList = [];
+                    }
+                    updateDraftBadges(cachedDraftsList.length);
+                    return cachedDraftsList;
+                }
+
+                // Update badge numbers
+                function updateDraftBadges(customCount = null) {
+                    const count = customCount !== null ? customCount : cachedDraftsList.length;
+                    if (draftsCountBadge) {
+                        draftsCountBadge.textContent = count;
+                    }
+                    document.querySelectorAll('.drafts-count-num').forEach(el => {
+                        el.textContent = count;
+                    });
+                    if (draftsTotalSummary) {
+                        draftsTotalSummary.textContent = `${count} ${count === 1 ? 'naka-save na draft sa database' : 'naka-save na mga draft sa database'}`;
+                    }
+                }
+
+                // Open Saved Drafts Manager Modal
+                async function openDraftsModal() {
+                    if (!savedDraftsModal) return;
+                    savedDraftsModal.classList.add('active');
+                    if (draftSearchInput) {
+                        draftSearchInput.value = '';
+                    }
+
+                    if (draftsListContainer) {
+                        draftsListContainer.innerHTML = `
+                            <div style="text-align: center; padding: 40px 20px; color: #64748B;">
+                                <div class="spinner-border text-primary" role="status" style="width: 2.2rem; height: 2.2rem; margin-bottom: 12px;"></div>
+                                <h6 style="font-weight: 700; color: #334155; margin-bottom: 4px;">Kinukuha ang mga drafts mula sa Database...</h6>
+                                <p style="font-size: 0.85rem; margin: 0; color: #64748B;">Maa-access mo ang mga ito kahit saang computer o device.</p>
+                            </div>
+                        `;
+                    }
+
+                    await fetchDraftsFromDB();
+                    renderDraftsList('');
+
+                    if (draftSearchInput) {
+                        setTimeout(() => draftSearchInput.focus(), 150);
+                    }
+                }
+
+                // Close Saved Drafts Manager Modal
+                function closeDraftsModal() {
+                    if (!savedDraftsModal) return;
+                    savedDraftsModal.classList.remove('active');
+                }
+
+                // Save or Update Draft to Database & LocalStorage
+                async function saveDraft(silent = true, asNew = false, customTitle = '') {
+                    if (isRestoringDraft) return false;
+
+                    const companyVal = headerCompanySelect ? headerCompanySelect.value : '';
+                    const brandVal = headerBrandSelect ? headerBrandSelect.value : '';
+                    const modelVal = headerModelSelect ? headerModelSelect.value : '';
+                    const batchNoVal = inputBatchNo ? inputBatchNo.value.trim() : '';
+                    const dateVal = inputDateDelivered ? inputDateDelivered.value : '';
+                    const statusVal = headerBatchStatus ? headerBatchStatus.value : 'GOOD';
+
+                    const rowsWithData = tableRows.filter(r => (r.serial_number && r.serial_number.trim() !== '') || (r.mac_address && r.mac_address.trim() !== '') || r.id);
+                    const verifiedUnits = tableRows.filter(r => r.is_matched && r.id);
+
+                    // If completely blank and silent auto-save, skip saving
+                    if (!companyVal && rowsWithData.length === 0 && silent && !currentDraftId) {
+                        return false;
+                    }
+
+                    const now = new Date();
+                    const timeOnly = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+                    let draftTitle = (customTitle || '').trim();
+                    if (!draftTitle) {
+                        const existingDraft = cachedDraftsList.find(d => String(d.id) === String(currentDraftId));
+                        if (!asNew && existingDraft && existingDraft.title) {
+                            draftTitle = existingDraft.title;
+                        } else {
+                            draftTitle = (companyVal ? companyVal + ' - ' : '') + (batchNoVal ? batchNoVal : ('Draft (' + timeOnly + ')'));
+                        }
+                    }
+
+                    const payload = {
+                        id: asNew ? null : currentDraftId,
+                        as_new: asNew,
+                        title: draftTitle,
+                        company_name: companyVal,
+                        brand: brandVal,
+                        model: modelVal,
+                        batch_no: batchNoVal,
+                        date_delivered: dateVal,
+                        status: statusVal,
+                        sound_enabled: soundEnabled,
+                        rows: tableRows
+                    };
+
+                    // Local fast cache save
+                    try {
+                        localStorage.setItem('dftm_comparing_last_working_sheet_' + USER_STORAGE_SUFFIX, JSON.stringify(payload));
+                    } catch (e) {}
+
+                    try {
+                        const res = await fetch(DRAFTS_API_URL, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Accept': 'application/json',
+                                'X-CSRF-TOKEN': CSRF_TOKEN,
+                                'X-Requested-With': 'XMLHttpRequest'
+                            },
+                            body: JSON.stringify(payload)
+                        });
+
+                        const data = await res.json();
+                        if (data && data.success && data.draft_id) {
+                            currentDraftId = data.draft_id;
+                            localStorage.setItem(ACTIVE_DRAFT_KEY, currentDraftId);
+                            syncActiveDraftInput();
+
+                            // Update Indicators
+                            if (draftStatusIndicator) {
+                                draftStatusIndicator.classList.remove('saving');
+                                draftStatusIndicator.classList.add('saved');
+                                if (draftStatusIcon) draftStatusIcon.className = 'bi bi-database-check text-success';
+                                if (draftStatusText) {
+                                    draftStatusText.textContent = `DB Saved: ${timeOnly} (${verifiedUnits.length} verified)`;
+                                }
+                            }
+
+                            if (draftAlertBanner) {
+                                draftAlertBanner.style.display = 'flex';
+                                if (draftAlertTitle) {
+                                    draftAlertTitle.textContent = `Aktibong Database Draft: ${data.title || draftTitle}`;
+                                }
+                                if (draftAlertDesc) {
+                                    draftAlertDesc.textContent = `${verifiedUnits.length} verified units para sa ${companyVal || 'kumpanya'}. Naka-sync sa database noong ${timeOnly}.`;
+                                }
+                            }
+
+                            // Refresh cached list silently in background
+                            fetchDraftsFromDB();
+
+                            if (!silent) {
+                                Swal.fire({
+                                    title: 'Draft Naka-save sa Database!',
+                                    html: `Matagumpay na nai-save ang draft na <strong>${escapeHtml(data.title || draftTitle)}</strong> na may <strong>${verifiedUnits.length} verified units</strong>.<br><br><span style="color: #059669; font-weight: 700;"><i class="bi bi-cloud-check-fill"></i> Naka-sync sa Database:</span> Maaari mo na itong buksan at ipagpatuloy kahit saang computer o device!`,
+                                    icon: 'success',
+                                    showCancelButton: true,
+                                    confirmButtonColor: '#059669',
+                                    cancelButtonColor: '#2563EB',
+                                    confirmButtonText: '<i class="bi bi-play-fill"></i> Ipagpatuloy ang Pag-scan',
+                                    cancelButtonText: '<i class="bi bi-folder2-open"></i> Buksan ang Saved Drafts'
+                                }).then((res) => {
+                                    if (res.dismiss === Swal.DismissReason.cancel) {
+                                        openDraftsModal();
+                                    }
+                                });
+                            }
+
+                            return true;
+                        }
+                    } catch (e) {
+                        console.error('Failed to sync draft to database', e);
+                        if (draftStatusIndicator) {
+                            draftStatusIndicator.classList.remove('saving');
+                            if (draftStatusText) draftStatusText.textContent = 'Auto-saved locally (Offline)';
+                        }
+                        if (!silent) {
+                            Swal.fire('Offline Save', 'Nai-save ang draft sa local browser cache, ngunit may aberya sa koneksyon sa database.', 'warning');
+                        }
+                        return false;
+                    }
+                }
+
+                // Debounced Auto-Save
+                function triggerAutoSave(immediate = false) {
+                    if (isRestoringDraft) return;
+
+                    if (draftStatusIndicator) {
+                        draftStatusIndicator.classList.add('saving');
+                        if (draftStatusIcon) draftStatusIcon.className = 'bi bi-arrow-repeat spin-icon text-primary';
+                        if (draftStatusText) draftStatusText.textContent = 'Saving to database...';
+                    }
+
+                    if (immediate) {
+                        if (autoSaveDebounceTimer) clearTimeout(autoSaveDebounceTimer);
+                        saveDraft(true, false);
+                        return;
+                    }
+
+                    if (autoSaveDebounceTimer) clearTimeout(autoSaveDebounceTimer);
+                    autoSaveDebounceTimer = setTimeout(() => {
+                        saveDraft(true, false);
+                    }, 500);
+                }
+
+                // Prompt user to manually save draft or name a new draft
+                function promptManualSaveDraft(forceNew = false) {
+                    const activeDraft = currentDraftId ? cachedDraftsList.find(d => String(d.id) === String(currentDraftId)) : null;
+                    const companyVal = headerCompanySelect ? headerCompanySelect.value : '';
+                    const batchNoVal = inputBatchNo ? inputBatchNo.value.trim() : '';
+
+                    let defaultName = '';
+                    if (!forceNew && activeDraft && activeDraft.title) {
+                        defaultName = activeDraft.title;
+                    } else {
+                        defaultName = (companyVal ? companyVal + ' - ' : '') + (batchNoVal || ('Batch Draft (' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + ')'));
+                    }
+
+                    Swal.fire({
+                        title: forceNew ? '<i class="bi bi-database-add text-primary"></i> I-save bilang Bagong Database Draft' : '<i class="bi bi-database-check text-primary"></i> I-save sa Database',
+                        text: 'Maglagay ng pangalan o title para sa draft na ito upang madali mo itong makilala sa anumang device:',
+                        input: 'text',
+                        inputValue: defaultName,
+                        inputPlaceholder: 'Hal: PLDT Batch 10 - Nov 15',
+                        showCancelButton: true,
+                        confirmButtonColor: '#2563EB',
+                        cancelButtonColor: '#64748B',
+                        confirmButtonText: '<i class="bi bi-floppy"></i> I-save sa Database',
+                        cancelButtonText: 'Kanselahin',
+                        inputValidator: (val) => {
+                            if (!val || !val.trim()) {
+                                return 'Pakilagay ang pangalan ng draft!';
+                            }
+                        }
+                    }).then(async (result) => {
+                        if (result.isConfirmed) {
+                            await saveDraft(false, forceNew, result.value.trim());
+                            if (savedDraftsModal && savedDraftsModal.classList.contains('active')) {
+                                await fetchDraftsFromDB();
+                                renderDraftsList(draftSearchInput ? draftSearchInput.value : '');
+                            }
+                        }
+                    });
+                }
+
+                // Render dynamic card list in Saved Drafts Manager Modal
+                function renderDraftsList(filterText = '') {
+                    if (!draftsListContainer) return;
+
+                    const drafts = cachedDraftsList;
+                    updateDraftBadges(drafts.length);
+
+                    const search = (filterText || '').toLowerCase().trim();
+                    const filtered = drafts.filter(d => {
+                        if (!search) return true;
+                        const corpus = `${d.title || ''} ${d.company_name || ''} ${d.batch_no || ''} ${d.brand || ''} ${d.model || ''} ${d.created_by || ''}`.toLowerCase();
+                        return corpus.includes(search);
+                    });
+
+                    if (filtered.length === 0) {
+                        draftsListContainer.innerHTML = `
+                            <div style="text-align: center; padding: 40px 20px; color: #64748B;">
+                                <i class="bi bi-database-slash" style="font-size: 3rem; color: #CBD5E1; display: block; margin-bottom: 12px;"></i>
+                                <h5 style="font-weight: 700; color: #334155; margin-bottom: 6px;">${search ? 'Walang Tumutugmang Draft sa Database' : 'Walang Naka-save na Drafts sa Database'}</h5>
+                                <p style="font-size: 0.88rem; margin: 0 0 16px 0; color: #64748B;">
+                                    ${search ? `Walang nahanap para sa query na "${escapeHtml(search)}".` : 'Wala pang nai-save na batch drafts sa database. I-click ang button sa ibaba upang i-save ang kasalukuyang spreadsheet.'}
+                                </p>
+                                <button type="button" class="btn btn-sm btn-primary" id="btnModalEmptySave" style="font-weight: 700; background: #2563EB;">
+                                    <i class="bi bi-plus-lg"></i> I-save ang Kasalukuyang Spreadsheet bilang Draft
+                                </button>
+                            </div>
+                        `;
+                        const btnEmpty = document.getElementById('btnModalEmptySave');
+                        if (btnEmpty) {
+                            btnEmpty.addEventListener('click', () => promptManualSaveDraft(true));
+                        }
+                        return;
+                    }
+
+                    let html = '';
+                    filtered.forEach(d => {
+                        const isActive = String(d.id) === String(currentDraftId);
+                        const verified = d.verified_count || 0;
+                        const totalRows = d.total_rows || 0;
+                        const company = d.company_name || 'Walang Company';
+                        const batchNo = d.batch_no || 'Walang Batch #';
+                        const brand = d.brand || 'Lahat ng Brand';
+                        const model = d.model || 'Lahat ng Model';
+                        const updatedTime = d.updated_at_formatted || 'kamakailan';
+                        const creator = d.created_by || 'Staff';
+
+                        html += `
+                            <div class="draft-item-card ${isActive ? 'is-active-draft' : ''}" id="draftCard_${d.id}">
+                                <div style="flex: 1; min-width: 280px;">
+                                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px; flex-wrap: wrap;">
+                                        <h5 style="margin: 0; font-size: 1rem; font-weight: 800; color: #1E293B;">
+                                            ${escapeHtml(d.title || 'Untitled Draft')}
+                                        </h5>
+                                        ${isActive ? `
+                                            <span class="badge" style="background: #10B981; color: #FFFFFF; font-size: 0.72rem; padding: 3px 8px; border-radius: 4px; font-weight: 700;">
+                                                <i class="bi bi-check-circle-fill"></i> Kasalukuyang Aktibo
+                                            </span>
+                                        ` : ''}
+                                        <span class="badge" style="background: #E0E7FF; color: #3730A3; font-size: 0.72rem; padding: 3px 8px; border-radius: 4px; font-weight: 600;">
+                                            <i class="bi bi-person-fill"></i> ${escapeHtml(creator)}
+                                        </span>
+                                    </div>
+                                    <div style="display: flex; align-items: center; gap: 10px; font-size: 0.82rem; color: #475569; flex-wrap: wrap; margin-bottom: 6px;">
+                                        <span><strong>Company:</strong> <span style="color: #1E3A8A; font-weight: 700;">${escapeHtml(company)}</span></span>
+                                        <span>•</span>
+                                        <span><strong>Batch #:</strong> <span style="font-weight: 700;">${escapeHtml(batchNo)}</span></span>
+                                        <span>•</span>
+                                        <span><strong>Model:</strong> ${escapeHtml(brand)} / ${escapeHtml(model)}</span>
+                                    </div>
+                                    <div style="display: flex; align-items: center; gap: 12px; font-size: 0.78rem; color: #64748B; flex-wrap: wrap;">
+                                        <span style="background: #EFF6FF; color: #1D4ED8; padding: 2px 8px; border-radius: 4px; font-weight: 700;">
+                                            <i class="bi bi-check2-circle"></i> ${verified} Verified Units
+                                        </span>
+                                        <span style="background: #F1F5F9; color: #475569; padding: 2px 8px; border-radius: 4px; font-weight: 600;">
+                                            <i class="bi bi-table"></i> ${totalRows} Total Rows
+                                        </span>
+                                        <span style="color: #94A3B8;">
+                                            <i class="bi bi-database"></i> Database: ${escapeHtml(updatedTime)}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                                    <button type="button" class="btn btn-sm btn-use-draft" data-draft-id="${d.id}"
+                                        style="font-weight: 700; font-size: 0.84rem; padding: 6px 16px; ${isActive ? 'background: #059669; color: #FFF; border: none;' : 'background: #2563EB; color: #FFF; border: none;'}"
+                                        title="I-load at gamitin ang draft na ito mula sa database">
+                                        <i class="bi ${isActive ? 'bi-arrow-repeat' : 'bi-box-arrow-in-right'}"></i> ${isActive ? 'Gamitin / I-reload' : 'Gamitin (Use Draft)'}
+                                    </button>
+                                    <button type="button" class="btn btn-outline btn-sm btn-rename-draft" data-draft-id="${d.id}"
+                                        style="font-weight: 600; font-size: 0.8rem; padding: 6px 12px; color: #475569; border-color: #CBD5E1; background: #FFF;"
+                                        title="Palitan ang pangalan ng draft sa database">
+                                        <i class="bi bi-pencil"></i> Rename
+                                    </button>
+                                    <button type="button" class="btn btn-outline btn-sm btn-delete-draft" data-draft-id="${d.id}"
+                                        style="font-weight: 600; font-size: 0.8rem; padding: 6px 12px; color: #DC2626; border-color: #FCA5A5; background: #FFF;"
+                                        title="Burahin ang draft na ito sa database">
+                                        <i class="bi bi-trash"></i> Burahin
+                                    </button>
+                                </div>
+                            </div>
+                        `;
+                    });
+
+                    draftsListContainer.innerHTML = html;
+
+                    // Attach card action listeners
+                    draftsListContainer.querySelectorAll('.btn-use-draft').forEach(btn => {
+                        btn.addEventListener('click', function() {
+                            const id = this.getAttribute('data-draft-id');
+                            loadAndUseDraft(id);
+                        });
+                    });
+
+                    draftsListContainer.querySelectorAll('.btn-rename-draft').forEach(btn => {
+                        btn.addEventListener('click', function() {
+                            const id = this.getAttribute('data-draft-id');
+                            renameDraft(id);
+                        });
+                    });
+
+                    draftsListContainer.querySelectorAll('.btn-delete-draft').forEach(btn => {
+                        btn.addEventListener('click', function() {
+                            const id = this.getAttribute('data-draft-id');
+                            deleteDraft(id);
+                        });
+                    });
+                }
+
+                // Load and switch to selected draft from Database
+                async function loadAndUseDraft(draftId) {
+                    Swal.fire({
+                        title: 'Kinukuha mula sa Database...',
+                        text: 'I-dinadownload ang draft records at mga rows...',
+                        allowOutsideClick: false,
+                        didOpen: () => {
+                            Swal.showLoading();
+                        }
+                    });
+
+                    try {
+                        const res = await fetch(`${DRAFTS_API_URL}/${draftId}`, {
+                            headers: {
+                                'Accept': 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest'
+                            }
+                        });
+                        const data = await res.json();
+
+                        if (!data || !data.success || !data.draft) {
+                            Swal.fire('Draft Not Found', 'Hindi natagpuan ang draft sa database.', 'error');
+                            return;
+                        }
+
+                        const targetDraft = data.draft;
+
+                        // Silently save current draft before switching if user already has data on screen
+                        if (currentDraftId && String(currentDraftId) !== String(draftId)) {
+                            await saveDraft(true, false);
+                        }
+
+                        currentDraftId = targetDraft.id;
+                        localStorage.setItem(ACTIVE_DRAFT_KEY, currentDraftId);
+                        syncActiveDraftInput();
+                        closeDraftsModal();
+
+                        await restoreDraft(targetDraft);
+                    } catch (err) {
+                        console.error('Error loading draft from database', err);
+                        Swal.fire('Error', 'Hindi ma-load ang draft mula sa database.', 'error');
+                    }
+                }
+
+                // Rename draft title in Database
+                async function renameDraft(draftId) {
+                    const target = cachedDraftsList.find(d => String(d.id) === String(draftId));
+                    const currentTitle = target ? target.title : '';
+
+                    Swal.fire({
+                        title: 'Palitan ang Pangalan ng Draft',
+                        input: 'text',
+                        inputValue: currentTitle,
+                        inputPlaceholder: 'Bagong pangalan ng draft...',
+                        showCancelButton: true,
+                        confirmButtonColor: '#2563EB',
+                        cancelButtonColor: '#64748B',
+                        confirmButtonText: '<i class="bi bi-check-lg"></i> I-save sa Database',
+                        cancelButtonText: 'Kanselahin',
+                        inputValidator: (val) => {
+                            if (!val || !val.trim()) {
+                                return 'Pakilagay ang bagong pangalan!';
+                            }
+                        }
+                    }).then(async (result) => {
+                        if (result.isConfirmed) {
+                            const newTitle = result.value.trim();
+                            try {
+                                const res = await fetch(`${DRAFTS_API_URL}/${draftId}/rename`, {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                        'Accept': 'application/json',
+                                        'X-CSRF-TOKEN': CSRF_TOKEN,
+                                        'X-Requested-With': 'XMLHttpRequest'
+                                    },
+                                    body: JSON.stringify({ title: newTitle })
+                                });
+                                const data = await res.json();
+                                if (data && data.success) {
+                                    if (target) target.title = newTitle;
+                                    if (String(currentDraftId) === String(draftId) && draftAlertTitle) {
+                                        draftAlertTitle.textContent = `Aktibong Draft: ${newTitle}`;
+                                    }
+                                    renderDraftsList(draftSearchInput ? draftSearchInput.value : '');
+                                    showStatus(`Pangalan ng draft na-update sa database: "${escapeHtml(newTitle)}"`, 'success');
+                                }
+                            } catch (e) {
+                                Swal.fire('Error', 'Hindi na-update ang pangalan sa database.', 'error');
+                            }
+                        }
+                    });
+                }
+
+                // Delete a draft from Database
+                function deleteDraft(draftId) {
+                    const target = cachedDraftsList.find(d => String(d.id) === String(draftId));
+                    const titleStr = target ? target.title : 'Draft';
+                    const verified = target ? target.verified_count : 0;
+
+                    Swal.fire({
+                        title: 'Burahin ang Draft sa Database?',
+                        html: `Sigurado ka bang nais mong burahin ang draft na <strong>${escapeHtml(titleStr)}</strong> mula sa database?<br><br>${verified > 0 ? `<span style="color: #DC2626; font-weight: 700;">Mawawala ang ${verified} verified units na na-scan sa draft na ito.</span>` : 'Mabubura ito para sa lahat ng workstations.'}`,
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonColor: '#DC2626',
+                        cancelButtonColor: '#64748B',
+                        confirmButtonText: '<i class="bi bi-trash"></i> Oo, Burahin sa Database',
+                        cancelButtonText: 'Kanselahin'
+                    }).then(async (result) => {
+                        if (result.isConfirmed) {
+                            try {
+                                const res = await fetch(`${DRAFTS_API_URL}/${draftId}`, {
+                                    method: 'DELETE',
+                                    headers: {
+                                        'Accept': 'application/json',
+                                        'X-CSRF-TOKEN': CSRF_TOKEN,
+                                        'X-Requested-With': 'XMLHttpRequest'
+                                    }
+                                });
+                                const data = await res.json();
+                                if (data && data.success) {
+                                    cachedDraftsList = cachedDraftsList.filter(d => String(d.id) !== String(draftId));
+                                    updateDraftBadges(cachedDraftsList.length);
+
+                                    // If deleted draft was active, clear pointer
+                                    if (String(currentDraftId) === String(draftId)) {
+                                        currentDraftId = null;
+                                        localStorage.removeItem(ACTIVE_DRAFT_KEY);
+                                        syncActiveDraftInput();
+                                        if (draftAlertBanner) draftAlertBanner.style.display = 'none';
+                                        if (draftStatusIndicator) {
+                                            draftStatusIndicator.classList.remove('saving', 'saved');
+                                            if (draftStatusIcon) draftStatusIcon.className = 'bi bi-database text-muted';
+                                            if (draftStatusText) draftStatusText.textContent = 'Auto-save: Ready';
+                                        }
+                                    }
+
+                                    renderDraftsList(draftSearchInput ? draftSearchInput.value : '');
+                                    showStatus(`Draft "${escapeHtml(titleStr)}" nabura sa database.`, 'duplicate');
+                                }
+                            } catch (e) {
+                                Swal.fire('Error', 'Hindi nabura ang draft sa database.', 'error');
+                            }
+                        }
+                    });
+                }
+
+                // Start clean new batch without losing any database drafts
+                function startNewBatch(confirmBefore = true) {
+                    const doNewBatch = async () => {
+                        // Silently save current draft before clearing if it has data
+                        const hasData = tableRows.some(r => (r.serial_number && r.serial_number.trim() !== '') || (r.mac_address && r.mac_address.trim() !== '') || r.id);
+                        if (hasData && currentDraftId) {
+                            await saveDraft(true, false);
+                        }
+
+                        // Clear active draft pointer
+                        currentDraftId = null;
+                        localStorage.removeItem(ACTIVE_DRAFT_KEY);
+                        syncActiveDraftInput();
+
+                        // Reset form fields
+                        if (headerCompanySelect) headerCompanySelect.value = '';
+                        currentCompany = '';
+                        formCompanyInput.value = '';
+                        loadedPoolUnits = [];
+                        currentBrandsData = [];
+                        if (headerBrandSelect) {
+                            headerBrandSelect.innerHTML = '<option value="">-- Select Company First --</option>';
+                            headerBrandSelect.disabled = true;
+                        }
+                        if (headerModelSelect) {
+                            headerModelSelect.innerHTML = '<option value="">-- Select Company First --</option>';
+                            headerModelSelect.disabled = true;
+                        }
+                        if (inputBatchNo) inputBatchNo.value = '';
+                        if (inputDateDelivered) inputDateDelivered.value = '';
+                        if (headerBatchStatus) headerBatchStatus.value = 'GOOD';
+
+                        // Reset spreadsheet table
+                        tableRows = [];
+                        addBlankRows(1);
+                        renderTable();
+                        updateCounters();
+
+                        // Reset UI indicators
+                        if (draftAlertBanner) draftAlertBanner.style.display = 'none';
+                        if (draftStatusIndicator) {
+                            draftStatusIndicator.classList.remove('saving', 'saved');
+                            if (draftStatusIcon) draftStatusIcon.className = 'bi bi-database text-muted';
+                            if (draftStatusText) draftStatusText.textContent = 'Auto-save: Ready';
+                        }
+
+                        closeDraftsModal();
+                        focusCell(0, 'serial');
+                        showStatus('<i class="bi bi-stars"></i> Nakahanda na ang bagong spreadsheet. Ang iyong mga drafts ay ligtas sa Database.', 'success');
+                    };
+
+                    if (!confirmBefore) {
+                        doNewBatch();
+                        return;
+                    }
+
+                    const verifiedCount = tableRows.filter(r => r.is_matched && r.id).length;
+                    const hasData = verifiedCount > 0 || tableRows.some(r => (r.serial_number && r.serial_number.trim() !== '') || (r.mac_address && r.mac_address.trim() !== ''));
+
+                    if (!hasData) {
+                        doNewBatch();
+                        return;
+                    }
+
+                    Swal.fire({
+                        title: 'Magsimula ng Panibagong Batch?',
+                        html: `
+                            <p style="font-size: 0.95rem; margin-bottom: 12px; color: #334155;">
+                                Nais mo bang magbukas ng malinis na spreadsheet para sa bagong batch?
+                            </p>
+                            <div style="background: #F0FDF4; border: 1.5px solid #86EFAC; border-radius: 8px; padding: 12px 16px; font-size: 0.88rem; color: #166534; text-align: left;">
+                                <i class="bi bi-database-check"></i> <strong>Ligtas sa Database:</strong> Ang kasalukuyang spreadsheet ay mananatiling naka-save sa database at maaari mong balikan o i-load kahit saang computer anumang oras.
+                            </div>
+                        `,
+                        icon: 'question',
+                        showCancelButton: true,
+                        confirmButtonColor: '#2563EB',
+                        cancelButtonColor: '#64748B',
+                        confirmButtonText: '<i class="bi bi-plus-circle"></i> Oo, Buksan ang Bagong Batch',
+                        cancelButtonText: 'Kanselahin'
+                    }).then((res) => {
+                        if (res.isConfirmed) {
+                            doNewBatch();
+                        }
+                    });
+                }
+
+                // Restore a draft object into spreadsheet
+                async function restoreDraft(draft) {
+                    if (!draft) return;
+                    isRestoringDraft = true;
+
+                    Swal.fire({
+                        title: 'Binubuksan ang Draft...',
+                        text: `Kinukuha ang data para sa "${draft.title || draft.company_name || 'Draft'}"...`,
+                        allowOutsideClick: false,
+                        didOpen: () => {
+                            Swal.showLoading();
+                        }
+                    });
+
+                    try {
+                        currentDraftId = draft.id;
+                        localStorage.setItem(ACTIVE_DRAFT_KEY, currentDraftId);
+                        syncActiveDraftInput();
+
+                        // 1. Restore Company
+                        if (draft.company_name) {
+                            headerCompanySelect.value = draft.company_name;
+                            currentCompany = draft.company_name;
+                            formCompanyInput.value = draft.company_name;
+                            await fetchCompanyUnits(draft.company_name);
+                        }
+
+                        // 2. Restore Brand & Model dropdowns
+                        if (draft.brand) {
+                            headerBrandSelect.value = draft.brand;
+                            populateModelDropdown(draft.brand, draft.model || '');
+                            if (draft.model) {
+                                headerModelSelect.value = draft.model;
+                            }
+                        }
+
+                        // 3. Restore Metadata
+                        if (draft.batch_no) {
+                            inputBatchNo.value = draft.batch_no;
+                        }
+                        if (draft.date_delivered && inputDateDelivered) {
+                            inputDateDelivered.value = draft.date_delivered;
+                        }
+                        if (draft.status && headerBatchStatus) {
+                            headerBatchStatus.value = draft.status;
+                        }
+                        if (typeof draft.sound_enabled === 'boolean') {
+                            soundEnabled = draft.sound_enabled;
+                            if (btnAudioToggle) {
+                                btnAudioToggle.innerHTML = soundEnabled ? '<i class="bi bi-volume-up-fill"></i> Sound: ON' : '<i class="bi bi-volume-mute-fill"></i> Sound: OFF';
+                            }
+                        }
+
+                        // 4. Restore Rows
+                        if (Array.isArray(draft.rows) && draft.rows.length > 0) {
+                            tableRows = JSON.parse(JSON.stringify(draft.rows));
+                        } else {
+                            tableRows = [];
+                            addBlankRows(1);
+                        }
+
+                        renderTable();
+                        updateCounters();
+
+                        isRestoringDraft = false;
+                        Swal.close();
+
+                        // 5. Update Status Indicators & Alert Banner
+                        const verifiedCount = tableRows.filter(r => r.is_matched && r.id).length;
+                        if (draftStatusIndicator) {
+                            draftStatusIndicator.classList.add('saved');
+                            if (draftStatusIcon) draftStatusIcon.className = 'bi bi-database-check text-success';
+                            if (draftStatusText) {
+                                draftStatusText.textContent = `Draft: Loaded from DB (${verifiedCount} verified)`;
+                            }
+                        }
+
+                        if (draftAlertBanner) {
+                            draftAlertBanner.style.display = 'flex';
+                            if (draftAlertTitle) {
+                                draftAlertTitle.textContent = `Aktibong Draft: ${draft.title || draft.company_name || 'Draft'}`;
+                            }
+                            if (draftAlertDesc) {
+                                draftAlertDesc.textContent = `${verifiedCount} verified units para sa ${draft.company_name || 'kumpanya'}. Huling binago: ${draft.updated_at_formatted || 'kamakailan'}.`;
+                            }
+                        }
+
+                        showStatus(`<i class="bi bi-check-circle-fill"></i> Naka-load na ang draft: <strong>${escapeHtml(draft.title || draft.company_name || 'Draft')}</strong> mula sa database! Maaari nang ipagpatuloy ang pag-scan.`, 'success');
+
+                        // 6. Focus on next empty cell or missing MAC cell
+                        let nextFocusIdx = tableRows.findIndex(r => !r.serial_number);
+                        if (nextFocusIdx === -1) {
+                            nextFocusIdx = tableRows.findIndex(r => r.serial_number && !r.mac_address);
+                            if (nextFocusIdx !== -1) {
+                                focusCell(nextFocusIdx, 'mac');
+                            } else {
+                                addBlankRows(1);
+                                focusCell(tableRows.length - 1, 'serial');
+                            }
+                        } else {
+                            focusCell(nextFocusIdx, 'serial');
+                        }
+                    } catch (err) {
+                        console.error('Error during draft restore', err);
+                        isRestoringDraft = false;
+                        Swal.close();
+                        showStatus('May naganap na error habang binubuksan ang draft.', 'error');
+                    }
+                }
 
                 // Web Audio Synthesizer
                 const audioCtx = (window.AudioContext || window.webkitAudioContext) ? new(window.AudioContext || window
@@ -643,9 +1655,7 @@
                         console.error(err);
                         showStatus('Failed to load company units.', 'error');
                     }
-                }
-
-                // Add blank rows (Default starts with 1 row)
+                }                // Add blank rows (Default starts with 1 row)
                 function addBlankRows(qty = 1) {
                     const startIdx = tableRows.length;
                     const activeBrand = headerBrandSelect ? headerBrandSelect.value : '';
@@ -674,6 +1684,7 @@
 
                     renderTable();
                     updateCounters();
+                    triggerAutoSave(true);
                 }
 
                 // Render Table rows matching spreadsheet view
@@ -713,9 +1724,9 @@
                             <!-- STATUS -->
                             <td class="${r.repair_status === 'GOOD' ? 'excel-status-good' : ''}" style="text-align: center;">
                                 <select name="row_status[${r.id || 'row_' + idx}]" 
-                                        class="excel-cell-select row-stat" 
-                                        data-idx="${idx}" 
-                                        style="font-size: 0.84rem; padding: 2px 4px; font-weight: 700; ${r.repair_status === 'GOOD' ? 'background: #92D050;' : ''}">
+                                       class="excel-cell-select row-stat" 
+                                       data-idx="${idx}" 
+                                       style="font-size: 0.84rem; padding: 2px 4px; font-weight: 700; ${r.repair_status === 'GOOD' ? 'background: #92D050;' : ''}">
                                     <option value="GOOD" ${r.repair_status === 'GOOD' ? 'selected' : ''}>GOOD</option>
                                     <option value="In process" ${r.repair_status === 'In process' ? 'selected' : ''}>In process</option>
                                     <option value="Repaired" ${r.repair_status === 'Repaired' ? 'selected' : ''}>Repaired</option>
@@ -784,6 +1795,7 @@
                         inp.addEventListener('input', function() {
                             const idx = parseInt(this.getAttribute('data-idx'));
                             tableRows[idx].serial_number = this.value;
+                            triggerAutoSave(false);
                         });
                     });
 
@@ -800,6 +1812,7 @@
                         inp.addEventListener('input', function() {
                             const idx = parseInt(this.getAttribute('data-idx'));
                             tableRows[idx].mac_address = this.value;
+                            triggerAutoSave(false);
                         });
                     });
 
@@ -808,6 +1821,7 @@
                         inp.addEventListener('input', function() {
                             tableRows[parseInt(this.getAttribute('data-idx'))].technical_diagnostic =
                                 this.value;
+                            triggerAutoSave(false);
                         });
                     });
 
@@ -815,6 +1829,7 @@
                         inp.addEventListener('input', function() {
                             tableRows[parseInt(this.getAttribute('data-idx'))].replace_parts = this
                                 .value;
+                            triggerAutoSave(false);
                         });
                     });
 
@@ -822,6 +1837,7 @@
                         inp.addEventListener('input', function() {
                             tableRows[parseInt(this.getAttribute('data-idx'))].box_no = this.value;
                             updateCounters();
+                            triggerAutoSave(false);
                         });
                     });
 
@@ -830,6 +1846,7 @@
                             const idx = parseInt(this.getAttribute('data-idx'));
                             tableRows[idx].repair_status = this.value;
                             renderTable();
+                            triggerAutoSave(true);
                         });
                     });
 
@@ -848,6 +1865,7 @@
                             } else {
                                 renderTable();
                                 updateCounters();
+                                triggerAutoSave(true);
                             }
                         });
                     });
@@ -1238,14 +2256,63 @@
                     footerIncomingCount.textContent = loadedPoolUnits.length;
                     footerVerifiedCount.textContent = matched;
                     footerRemainingCount.textContent = remaining;
+
+                    // Automatically update draft state if not currently restoring
+                    if (!isRestoringDraft) {
+                        triggerAutoSave(true);
+                    }
                 }
 
                 // Header Events
                 if (headerCompanySelect) {
                     headerCompanySelect.addEventListener('change', function() {
                         const comp = this.value;
+                        const currentVerified = tableRows.filter(r => (r.serial_number && r.serial_number.trim() !== '') || r.id).length;
+
+                        // Confirm before switching if user already has scanned units
+                        if (currentCompany && comp !== currentCompany && currentVerified > 0) {
+                            Swal.fire({
+                                title: 'Palitan ang Company?',
+                                html: `May <strong>${currentVerified}</strong> units ka nang na-scan para sa <strong>${escapeHtml(currentCompany)}</strong>.<br><br>Ang kasalukuyang sheet ay mai-save sa iyong <strong>Saved Drafts</strong> bago lumipat sa <strong>${escapeHtml(comp || 'ibang company')}</strong>. Nais mo bang magpatuloy?`,
+                                icon: 'question',
+                                showCancelButton: true,
+                                confirmButtonColor: '#2563EB',
+                                cancelButtonColor: '#64748B',
+                                confirmButtonText: '<i class="bi bi-arrow-left-right"></i> Oo, I-save ang Draft at Lumipat',
+                                cancelButtonText: 'Kanselahin'
+                            }).then((result) => {
+                                if (result.isConfirmed) {
+                                    // Save current draft before switching company
+                                    saveDraft(true, false);
+                                    currentDraftId = null;
+                                    localStorage.removeItem(ACTIVE_DRAFT_KEY);
+
+                                    tableRows = [];
+                                    addBlankRows(1);
+                                    if (comp) {
+                                        fetchCompanyUnits(comp);
+                                    } else {
+                                        currentCompany = '';
+                                        formCompanyInput.value = '';
+                                        loadedPoolUnits = [];
+                                        currentBrandsData = [];
+                                        headerBrandSelect.innerHTML = '<option value="">-- Select Company First --</option>';
+                                        headerBrandSelect.disabled = true;
+                                        headerModelSelect.innerHTML = '<option value="">-- Select Company First --</option>';
+                                        headerModelSelect.disabled = true;
+                                        updateCounters();
+                                    }
+                                    if (draftAlertBanner) draftAlertBanner.style.display = 'none';
+                                } else {
+                                    headerCompanySelect.value = currentCompany;
+                                }
+                            });
+                            return;
+                        }
+
                         if (comp) {
                             fetchCompanyUnits(comp);
+                            triggerAutoSave(true);
                         } else {
                             currentCompany = '';
                             formCompanyInput.value = '';
@@ -1258,6 +2325,7 @@
                                 '<option value="">-- Select Company First --</option>';
                             headerModelSelect.disabled = true;
                             updateCounters();
+                            triggerAutoSave(true);
                         }
                     });
                 }
@@ -1269,6 +2337,7 @@
                         if (currentCompany) {
                             fetchCompanyUnits(currentCompany);
                         }
+                        triggerAutoSave(true);
                     });
                 }
 
@@ -1277,8 +2346,94 @@
                         if (currentCompany) {
                             fetchCompanyUnits(currentCompany);
                         }
+                        triggerAutoSave(true);
                     });
                 }
+
+                if (inputBatchNo) {
+                    inputBatchNo.addEventListener('input', function() {
+                        triggerAutoSave(false);
+                    });
+                }
+
+                const inputDateDelivered = document.getElementById('inputDateDelivered');
+                if (inputDateDelivered) {
+                    inputDateDelivered.addEventListener('change', function() {
+                        triggerAutoSave(true);
+                    });
+                }
+
+                if (headerBatchStatus) {
+                    headerBatchStatus.addEventListener('change', function() {
+                        triggerAutoSave(true);
+                    });
+                }
+
+                // --- DRAFT & MODAL EVENT LISTENERS ---
+                // Save Draft buttons
+                if (btnTopSaveDraft) {
+                    btnTopSaveDraft.addEventListener('click', () => promptManualSaveDraft(false));
+                }
+                if (btnBottomSaveDraft) {
+                    btnBottomSaveDraft.addEventListener('click', () => promptManualSaveDraft(false));
+                }
+                if (btnBannerSaveDraft) {
+                    btnBannerSaveDraft.addEventListener('click', () => promptManualSaveDraft(false));
+                }
+
+                // Open Saved Drafts Modal buttons
+                if (btnOpenDraftsModal) {
+                    btnOpenDraftsModal.addEventListener('click', openDraftsModal);
+                }
+                if (btnBottomOpenDrafts) {
+                    btnBottomOpenDrafts.addEventListener('click', openDraftsModal);
+                }
+                if (btnBannerOpenDrafts) {
+                    btnBannerOpenDrafts.addEventListener('click', openDraftsModal);
+                }
+
+                // Start New Batch buttons
+                if (btnStartNewBatch) {
+                    btnStartNewBatch.addEventListener('click', () => startNewBatch(true));
+                }
+                if (btnBannerNewBatch) {
+                    btnBannerNewBatch.addEventListener('click', () => startNewBatch(true));
+                }
+                if (btnModalNewBatch) {
+                    btnModalNewBatch.addEventListener('click', () => startNewBatch(true));
+                }
+
+                // Modal Close & Extra Buttons
+                if (btnCloseDraftsModal) {
+                    btnCloseDraftsModal.addEventListener('click', closeDraftsModal);
+                }
+                if (btnCloseDraftsFooter) {
+                    btnCloseDraftsFooter.addEventListener('click', closeDraftsModal);
+                }
+                if (btnModalSaveCurrentAsNew) {
+                    btnModalSaveCurrentAsNew.addEventListener('click', () => promptManualSaveDraft(true));
+                }
+                if (savedDraftsModal) {
+                    savedDraftsModal.addEventListener('click', function(e) {
+                        if (e.target === savedDraftsModal) closeDraftsModal();
+                    });
+                }
+                if (draftSearchInput) {
+                    draftSearchInput.addEventListener('input', function() {
+                        renderDraftsList(this.value);
+                    });
+                }
+
+                // Window Unload & Visibility Auto-Save Safety Net
+                window.addEventListener('beforeunload', function() {
+                    saveDraft(true, false);
+                });
+
+                window.addEventListener('visibilitychange', function() {
+                    if (document.visibilityState === 'hidden') {
+                        saveDraft(true, false);
+                    }
+                });
 
                 if (btnAddScanRow) {
                     btnAddScanRow.addEventListener('click', function() {
@@ -1331,6 +2486,19 @@
                                         Swal.showLoading();
                                     }
                                 });
+
+                                // Clean up active draft reference (draft will be deleted from DB upon successful batch store)
+                                if (currentDraftId) {
+                                    syncActiveDraftInput();
+                                    const submittedDraftId = currentDraftId;
+                                    currentDraftId = null;
+                                    localStorage.removeItem(ACTIVE_DRAFT_KEY);
+                                    cachedDraftsList = cachedDraftsList.filter(d => String(d.id) !== String(submittedDraftId));
+                                    try {
+                                        localStorage.setItem(DRAFTS_LIST_KEY, JSON.stringify(cachedDraftsList));
+                                    } catch (e) {}
+                                }
+
                                 storeBatchForm.submit();
                             }
                         });
@@ -1347,16 +2515,119 @@
                         .replace(/'/g, '&#039;');
                 }
 
-                // Initialize: Start with 1 row immediately
-                addBlankRows(1);
+                // Page Initialization & Database Drafts Startup Check
+                async function initPageAndDrafts() {
+                    // 1. Check and migrate any legacy local-only drafts into the Database
+                    try {
+                        const oldSingleDraft = localStorage.getItem(OLD_SINGLE_DRAFT_KEY);
+                        if (oldSingleDraft) {
+                            const parsed = JSON.parse(oldSingleDraft);
+                            if (parsed && (parsed.company_name || (Array.isArray(parsed.rows) && parsed.rows.length > 0))) {
+                                parsed.title = (parsed.company_name ? parsed.company_name + ' - ' : '') + (parsed.batch_no || 'Migrated Local Draft');
+                                parsed.as_new = true;
+                                await fetch(DRAFTS_API_URL, {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                        'Accept': 'application/json',
+                                        'X-CSRF-TOKEN': CSRF_TOKEN,
+                                        'X-Requested-With': 'XMLHttpRequest'
+                                    },
+                                    body: JSON.stringify(parsed)
+                                });
+                            }
+                            localStorage.removeItem(OLD_SINGLE_DRAFT_KEY);
+                        }
+                    } catch (e) {
+                        console.warn('Legacy single draft migration error:', e);
+                    }
 
-                // Auto-load if company is pre-selected in URL
-                if (headerCompanySelect && headerCompanySelect.value) {
-                    fetchCompanyUnits(headerCompanySelect.value);
+                    // 2. Fetch all drafts from DB
+                    const startupDrafts = await fetchDraftsFromDB();
+                    updateDraftBadges(startupDrafts.length);
+
+                    let activeDraftSummary = null;
+                    if (currentDraftId) {
+                        activeDraftSummary = startupDrafts.find(d => String(d.id) === String(currentDraftId));
+                    }
+
+                    if (activeDraftSummary) {
+                        const verifiedCount = activeDraftSummary.verified_count || 0;
+                        const totalCount = activeDraftSummary.total_rows || 0;
+                        const comp = activeDraftSummary.company_name || 'Hindi tinukoy';
+                        const batchNo = activeDraftSummary.batch_no || 'N/A';
+                        const timeStr = activeDraftSummary.updated_at_formatted || 'kamakailan';
+                        const titleStr = activeDraftSummary.title || 'Aktibong Draft';
+                        const creator = activeDraftSummary.created_by || 'Ikaw';
+
+                        Swal.fire({
+                            title: '<i class="bi bi-database-check text-primary"></i> May Aktibong Database Draft!',
+                            html: `
+                                <div style="text-align: left; font-size: 0.9rem; line-height: 1.6; background: #F8FAFC; padding: 14px 18px; border-radius: 8px; border: 1px solid #CBD5E1; margin: 12px 0;">
+                                    <div style="margin-bottom: 6px;"><strong>Draft Title:</strong> <span style="color: #2563EB; font-weight: 800;">${escapeHtml(titleStr)}</span></div>
+                                    <div style="margin-bottom: 6px;"><strong>Company:</strong> <strong>${escapeHtml(comp)}</strong></div>
+                                    <div style="margin-bottom: 6px;"><strong>Batch #:</strong> <strong>${escapeHtml(batchNo)}</strong></div>
+                                    <div style="margin-bottom: 6px;"><strong>Created By:</strong> <span>${escapeHtml(creator)}</span></div>
+                                    <div style="margin-bottom: 6px;"><strong>Nai-scan na Units:</strong> <span style="color: #059669; font-weight: 800;">${verifiedCount} Verified</span> (${totalCount} kabuuang rows)</div>
+                                    <div><strong>Huling Na-save sa DB:</strong> <span style="color: #64748B;">${escapeHtml(timeStr)}</span></div>
+                                </div>
+                                <p style="margin: 0; font-size: 0.92rem; color: #475569;">
+                                    Nais mo bang <strong>ipagpatuloy</strong> ang draft na ito mula sa database, pumili mula sa mga naka-save na drafts (${startupDrafts.length} total), o magsimula ng bagong batch?
+                                </p>
+                            `,
+                            icon: 'question',
+                            showCancelButton: true,
+                            showDenyButton: true,
+                            confirmButtonColor: '#059669',
+                            denyButtonColor: '#2563EB',
+                            cancelButtonColor: '#64748B',
+                            confirmButtonText: '<i class="bi bi-play-fill"></i> Ipagpatuloy ang Draft',
+                            denyButtonText: `<i class="bi bi-folder2-open"></i> Pumili ng Ibang Draft (${startupDrafts.length})`,
+                            cancelButtonText: '<i class="bi bi-plus-circle"></i> Bagong Batch',
+                            allowOutsideClick: false,
+                            allowEscapeKey: false
+                        }).then(async (result) => {
+                            if (result.isConfirmed) {
+                                await loadAndUseDraft(activeDraftSummary.id);
+                            } else if (result.isDenied) {
+                                addBlankRows(1);
+                                if (headerCompanySelect && headerCompanySelect.value) {
+                                    fetchCompanyUnits(headerCompanySelect.value);
+                                }
+                                openDraftsModal();
+                            } else {
+                                startNewBatch(false);
+                            }
+                        });
+                    } else if (startupDrafts.length > 0) {
+                        // Saved drafts exist in DB, start with clean row and inform user
+                        addBlankRows(1);
+                        if (headerCompanySelect && headerCompanySelect.value) {
+                            fetchCompanyUnits(headerCompanySelect.value);
+                        }
+                        focusCell(0, 'serial');
+
+                        Swal.fire({
+                            toast: true,
+                            position: 'top-end',
+                            icon: 'info',
+                            title: `May ${startupDrafts.length} naka-save na drafts sa database.`,
+                            text: 'I-click ang "Saved Drafts" button sa toolbar upang tingnan at i-load ang mga ito kahit saang computer.',
+                            showConfirmButton: false,
+                            timer: 5000,
+                            timerProgressBar: true
+                        });
+                    } else {
+                        // Fresh initial load
+                        addBlankRows(1);
+                        if (headerCompanySelect && headerCompanySelect.value) {
+                            fetchCompanyUnits(headerCompanySelect.value);
+                        }
+                        focusCell(0, 'serial');
+                    }
                 }
 
-                // Focus first serial number cell on initial page load
-                focusCell(0, 'serial');
+                initPageAndDrafts();
             });
         </script>
     @endpush
