@@ -262,7 +262,7 @@
                     <thead>
                         <tr>
                             <th colspan="7" class="excel-main-title">
-                                GOOD TRACEABILITY MATRIX
+                                REPAIRED TRACEABILITY MATRIX
                             </th>
                         </tr>
 
@@ -756,10 +756,10 @@
                                            data-idx="${idx}" 
                                            style="text-align: center; font-weight: 800; color: #0284C7; text-transform: uppercase; width: 50px;">
                                     ${tableRows.length > 1 ? `
-                                                        <button type="button" class="btn btn-outline btn-icon btn-sm btn-del-row" data-idx="${idx}" style="color: #DC2626; border: none; padding: 2px 4px; font-size: 0.8rem;" title="Remove Row">
-                                                            <i class="bi bi-x-circle"></i>
-                                                        </button>
-                                                    ` : ''}
+                                                                <button type="button" class="btn btn-outline btn-icon btn-sm btn-del-row" data-idx="${idx}" style="color: #DC2626; border: none; padding: 2px 4px; font-size: 0.8rem;" title="Remove Row">
+                                                                    <i class="bi bi-x-circle"></i>
+                                                                </button>
+                                                            ` : ''}
                                 </div>
                             </td>
                         </tr>

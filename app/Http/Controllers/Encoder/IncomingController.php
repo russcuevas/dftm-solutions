@@ -191,11 +191,16 @@ class IncomingController extends Controller
 
             if (is_array($serials)) {
                 $maxItemNo = InventoryItem::where('transmittal_id', $transmittal->id)->max('item_no') ?? 0;
+                $applyModelToAll = $request->boolean('apply_model_to_all');
+                $headerModel = trim($request->input('model', $transmittal->model));
+
                 foreach ($serials as $i => $sn) {
                     $itemId = $itemIds[$i] ?? null;
                     $mac = $macs[$i] ?? null;
                     $box = $boxes[$i] ?? null;
-                    $rowModel = !empty($models[$i]) ? trim($models[$i]) : $transmittal->model;
+                    $rowModel = ($applyModelToAll && !empty($headerModel))
+                        ? $headerModel
+                        : (!empty($models[$i]) ? trim($models[$i]) : $transmittal->model);
                     $rowBrand = !empty($brands[$i]) ? trim($brands[$i]) : $transmittal->brand;
 
                     // If completely empty blank row, skip it
@@ -696,6 +701,45 @@ class IncomingController extends Controller
                     'notes' => $it->notes,
                 ];
             }),
+        ]);
+    }
+
+    /**
+     * Batch update model directly in database via AJAX
+     */
+    public function updateModelAll(Request $request, $id)
+    {
+        $transmittal = Transmittal::findOrFail($id);
+        $model = trim($request->input('model', ''));
+
+        if ($model === '') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Pakilagay ang Model bago mag-update.',
+            ], 422);
+        }
+
+        // 1. Update transmittal header model
+        $transmittal->update([
+            'model' => $model,
+        ]);
+
+        // 2. Update ALL inventory items belonging to this transmittal in the database
+        $affectedRows = InventoryItem::where('transmittal_id', $transmittal->id)
+            ->update([
+                'model' => $model,
+            ]);
+
+        ActivityLog::log(
+            'INCOMING_MODEL_UPDATED',
+            "Encoder updated model to '{$model}' for transmittal {$transmittal->transmittal_no} ({$affectedRows} items updated)."
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => "Saved to database! Na-update ang model ng {$affectedRows} item(s) sa \"{$model}\".",
+            'model' => $model,
+            'affected_count' => $affectedRows,
         ]);
     }
 }

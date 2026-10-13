@@ -90,6 +90,7 @@ Route::middleware(['admin'])->prefix('admin')->name('admin.')->group(function ()
     Route::post('/incoming/{id}/add-rows', [AdminIncomingController::class, 'addRows'])->name('incoming.addRows');
     Route::delete('/incoming/{id}/item/{itemId}', [AdminIncomingController::class, 'deleteItem'])->name('incoming.deleteItem');
     Route::post('/incoming/{id}/save-header', [AdminIncomingController::class, 'saveHeader'])->name('incoming.saveHeader');
+    Route::post('/incoming/{id}/update-model-all', [AdminIncomingController::class, 'updateModelAll'])->name('incoming.updateModelAll');
 
     // Comparing & Batch Creation (Scanner Gun & Company Pooling)
     Route::get('/comparing', [AdminComparingController::class, 'index'])->name('comparing.index');
@@ -189,6 +190,7 @@ Route::middleware(['encoder'])->prefix('encoder')->name('encoder.')->group(funct
     Route::post('/incoming/{id}/add-rows', [EncoderIncomingController::class, 'addRows'])->name('incoming.addRows');
     Route::delete('/incoming/{id}/item/{itemId}', [EncoderIncomingController::class, 'deleteItem'])->name('incoming.deleteItem');
     Route::post('/incoming/{id}/save-header', [EncoderIncomingController::class, 'saveHeader'])->name('incoming.saveHeader');
+    Route::post('/incoming/{id}/update-model-all', [EncoderIncomingController::class, 'updateModelAll'])->name('incoming.updateModelAll');
 
     // Comparing & Batch Creation (Scanner Gun & Company Pooling)
     Route::get('/comparing', [EncoderComparingController::class, 'index'])->name('comparing.index');
