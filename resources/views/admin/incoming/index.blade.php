@@ -91,6 +91,9 @@
                             <a href="{{ route('admin.incoming.print', $transmittal->id) }}" target="_blank" class="btn btn-outline btn-sm" title="Print Consolidated Report">
                                 <i class="bi bi-printer"></i>
                             </a>
+                            <a href="{{ route('admin.incoming.print', $transmittal->id) }}?export=excel" target="_blank" class="btn btn-outline btn-sm" title="Export to Excel" style="color: #107C41;">
+                                <i class="bi bi-file-earmark-excel"></i>
+                            </a>
                             <form action="{{ route('admin.incoming.destroy', $transmittal->id) }}" method="POST" onsubmit="return confirm('Delete this transmittal and all its scanned items?');" style="display: inline;">
                                 @csrf
                                 @method('DELETE')

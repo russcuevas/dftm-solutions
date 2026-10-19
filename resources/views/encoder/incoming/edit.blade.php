@@ -122,6 +122,10 @@
                         class="btn btn-outline btn-sm">
                         <i class="bi bi-printer"></i> Print Report
                     </a>
+                    <a href="{{ route('encoder.incoming.print', $transmittal->id) }}?export=excel" target="_blank"
+                        class="btn btn-outline btn-sm" style="color: #107C41; border-color: #107C41; font-weight: 600;">
+                        <i class="bi bi-file-earmark-excel"></i> Export Excel
+                    </a>
                     <a href="{{ route('encoder.incoming.show', $transmittal->id) }}" class="btn btn-outline btn-sm">
                         <i class="bi bi-eye"></i> View Transmittal
                     </a>

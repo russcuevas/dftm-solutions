@@ -19,6 +19,9 @@
             <a href="{{ route('admin.outgoing.print', $slip->id) }}" target="_blank" class="btn btn-primary btn-sm">
                 <i class="bi bi-printer"></i> Print Outgoing Slip
             </a>
+            <a href="{{ route('admin.outgoing.print', $slip->id) }}?export=excel" target="_blank" class="btn btn-outline btn-sm" style="color: #107C41; border-color: #107C41; font-weight: 600;">
+                <i class="bi bi-file-earmark-excel"></i> Export Excel
+            </a>
             <a href="{{ route('admin.outgoing.index') }}" class="btn btn-outline btn-sm">
                 <i class="bi bi-arrow-left"></i> Back to Outgoing Slips
             </a>

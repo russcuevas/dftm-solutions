@@ -15,6 +15,9 @@
                 <a href="{{ route('encoder.outgoing.print', ['batch_id' => $selectedBatch->id]) }}" target="_blank" class="btn btn-primary">
                     <i class="bi bi-printer"></i> Print Outgoing Slip
                 </a>
+                <a href="{{ route('encoder.outgoing.print', ['batch_id' => $selectedBatch->id]) }}?export=excel" target="_blank" class="btn btn-outline" style="color: #107C41; border-color: #107C41; font-weight: 600;">
+                    <i class="bi bi-file-earmark-excel"></i> Export Excel
+                </a>
                 <button type="button" class="btn btn-outline" onclick="document.getElementById('releaseModal').style.display='flex';">
                     <i class="bi bi-send-check"></i> Record Release (SI/DR)
                 </button>

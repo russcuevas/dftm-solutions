@@ -60,8 +60,12 @@
                         <a href="{{ route('client.traceability.print', ['batch_id' => $selectedBatch->id]) }}"
                             target="_blank" class="btn btn-outline btn-sm"
                             style="font-weight: 700; display: inline-flex; align-items: center; gap: 6px;">
-                            <i class="bi bi-printer-fill" style="color: var(--dftm-accent);"></i> Print / Download Matrix
-                            Report
+                            <i class="bi bi-printer-fill" style="color: var(--dftm-accent);"></i> Print Matrix
+                        </a>
+                        <a href="{{ route('client.traceability.print', ['batch_id' => $selectedBatch->id]) }}?export=excel"
+                            target="_blank" class="btn btn-outline btn-sm"
+                            style="font-weight: 700; display: inline-flex; align-items: center; gap: 6px; color: #107C41; border-color: #107C41;">
+                            <i class="bi bi-file-earmark-excel"></i> Export Excel
                         </a>
                     @endif
                 </div>

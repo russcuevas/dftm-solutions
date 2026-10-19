@@ -138,6 +138,10 @@
                             target="_blank" class="btn btn-outline btn-sm">
                             <i class="bi bi-printer"></i> Print Matrix Report
                         </a>
+                        <a href="{{ route('admin.traceability.print', ['batch_id' => $selectedBatch->id]) }}?export=excel"
+                            target="_blank" class="btn btn-outline btn-sm" style="color: #107C41; border-color: #107C41; font-weight: 600;">
+                            <i class="bi bi-file-earmark-excel"></i> Export Excel
+                        </a>
                         <form action="{{ route('admin.traceability.destroyBatch', $selectedBatch->id) }}" method="POST"
                             onsubmit="return confirm('Dissolve this Batch? Units will be returned to the incoming pool.');"
                             style="display: inline;">

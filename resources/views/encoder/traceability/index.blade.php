@@ -142,6 +142,10 @@
                             target="_blank" class="btn btn-outline btn-sm">
                             <i class="bi bi-printer"></i> Print Matrix Report
                         </a>
+                        <a href="{{ route('encoder.traceability.print', ['batch_id' => $selectedBatch->id]) }}?export=excel"
+                            target="_blank" class="btn btn-outline btn-sm" style="color: #107C41; border-color: #107C41; font-weight: 600;">
+                            <i class="bi bi-file-earmark-excel"></i> Export Excel
+                        </a>
                     @endif
                 </div>
             </div>

@@ -13,7 +13,10 @@
         @if($selectedBatch)
             <div style="display: flex; align-items: center; gap: 10px;">
                 <a href="{{ route('client.outgoing.print', ['batch_id' => $selectedBatch->id]) }}" target="_blank" class="btn btn-primary" style="display: inline-flex; align-items: center; gap: 6px;">
-                    <i class="bi bi-printer-fill"></i> Print / Download Outgoing Slip
+                    <i class="bi bi-printer-fill"></i> Print Outgoing Slip
+                </a>
+                <a href="{{ route('client.outgoing.print', ['batch_id' => $selectedBatch->id]) }}?export=excel" target="_blank" class="btn btn-outline" style="display: inline-flex; align-items: center; gap: 6px; color: #107C41; border-color: #107C41; font-weight: 600;">
+                    <i class="bi bi-file-earmark-excel"></i> Export Excel
                 </a>
             </div>
         @endif
