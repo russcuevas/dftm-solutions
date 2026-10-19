@@ -192,6 +192,32 @@
                     </div>
                 </div>
 
+                <!-- Model Folders / Categories Bar (Nakaturo sa Model para sa Barcode Scanning) -->
+                <div class="model-folders-card" style="background: #FFFFFF; border: 1.5px solid #CBD5E1; border-radius: 10px; padding: 14px 18px; margin: 16px 0; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
+                    <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; border-bottom: 1px solid #E2E8F0; padding-bottom: 10px;">
+                        <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                            <div style="font-weight: 800; font-size: 0.92rem; color: var(--dftm-navy); display: flex; align-items: center; gap: 7px;">
+                                <i class="bi bi-folder2-open" style="color: #F59E0B; font-size: 1.25rem;"></i>
+                                <span>MGA MODEL FOLDER:</span>
+                            </div>
+                            <div id="activeModelBadge" style="display: inline-flex; align-items: center; gap: 6px; background: #FEF3C7; border: 1px solid #FCD34D; border-radius: 20px; padding: 3px 12px; font-size: 0.78rem; font-weight: 700; color: #92400E;">
+                                <i class="bi bi-geo-alt-fill" style="color: #D97706;"></i>
+                                <span>Aktibong Folder: <strong id="activeModelLabel">{{ $transmittal->model ?: 'Walang Model' }}</strong></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Dynamic Folder Tabs Nav -->
+                    <div id="modelFoldersNav" style="display: flex; align-items: center; flex-wrap: wrap; gap: 8px;">
+                        <!-- Generated via JS for existing models only -->
+                    </div>
+
+                    <div style="margin-top: 10px; font-size: 0.75rem; color: #64748B; display: flex; align-items: center; gap: 6px;">
+                        <i class="bi bi-info-circle-fill" style="color: #0284C7;"></i>
+                        <span>I-click ang model folder para makita o maibaril ang mga units para sa model na iyon.</span>
+                    </div>
+                </div>
+
                 <!-- Fast Serial Search Bar & Custom Add Row Bar -->
                 <div
                     style="background: #F8FAFC; border: 1px solid var(--dftm-border); border-radius: 8px; padding: 12px 16px; margin: 16px 0; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px;">
@@ -240,36 +266,14 @@
 
                     <!-- Column Headers -->
                     <div
-                        style="display: grid; grid-template-columns: 40px 2fr 2fr 1.2fr 1.2fr 30px 40px; gap: 8px; padding: 8px 12px; font-size: 0.74rem; font-weight: 800; color: var(--dftm-navy); text-transform: uppercase; background: #F1F5F9; border-radius: 6px 6px 0 0; align-items: end;">
-                        <div style="text-align: center; padding-bottom: 5px;">NO.</div>
-                        <div style="padding-bottom: 5px;">Serial Number (Scan Barcode)</div>
-                        <div style="padding-bottom: 5px;">MAC Address</div>
-                        <div>
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; flex-wrap: wrap; gap: 2px;">
-                                <span>Model</span>
-                                <label style="display: inline-flex; align-items: center; gap: 4px; font-size: 0.68rem; font-weight: 700; text-transform: none; cursor: pointer; color: var(--dftm-navy); margin-bottom: 0; user-select: none;" title="I-check para ma-update ang lahat ng rows">
-                                    <input type="checkbox" name="apply_model_to_all" id="syncModelCheckbox" value="1"
-                                        style="cursor: pointer; width: 13px; height: 13px; accent-color: var(--dftm-accent);">
-                                    <span>Select All</span>
-                                </label>
-                            </div>
-                            <div style="display: flex; gap: 4px; align-items: center;">
-                                <input type="text" id="tableBatchModelInput" class="form-control"
-                                    style="font-size: 0.75rem; padding: 3px 6px; height: 26px; text-transform: none; font-weight: 600; min-width: 0;"
-                                    placeholder="Type model..." value="{{ old('model', $transmittal->model) }}">
-                                <button type="button" id="btnUpdateAllModels" class="btn btn-outline btn-sm"
-                                    style="font-size: 0.68rem; padding: 2px 7px; height: 26px; white-space: nowrap; font-weight: 700; border-color: var(--dftm-accent); color: var(--dftm-accent); display: inline-flex; align-items: center; gap: 3px;"
-                                    title="I-apply ang model sa lahat ng rows">
-                                    <i class="bi bi-arrow-repeat"></i> Update
-                                </button>
-                            </div>
-                            <div id="modelUpdateNotice" style="display: none; font-size: 0.68rem; color: #16A34A; font-weight: 700; text-transform: none; margin-top: 2px;">
-                                <i class="bi bi-check-circle-fill"></i> <span id="modelUpdateNoticeText">Na-update lahat!</span>
-                            </div>
-                        </div>
-                        <div style="padding-bottom: 5px;">Brand</div>
-                        <div style="text-align: center; padding-bottom: 5px;"></div>
-                        <div style="text-align: center; padding-bottom: 5px;">Action</div>
+                        style="display: grid; grid-template-columns: 40px 2fr 2fr 1.2fr 1.2fr 30px 40px; gap: 8px; padding: 10px 12px; font-size: 0.74rem; font-weight: 800; color: var(--dftm-navy); text-transform: uppercase; background: #F1F5F9; border-radius: 6px 6px 0 0; align-items: center;">
+                        <div style="text-align: center;">NO.</div>
+                        <div>Serial Number (Scan Barcode)</div>
+                        <div>MAC Address</div>
+                        <div>Model</div>
+                        <div>Brand</div>
+                        <div style="text-align: center;"></div>
+                        <div style="text-align: center;">Action</div>
                     </div>
 
                     <div id="subtableRows">
@@ -438,22 +442,272 @@
             const btnSearchSerialModal = document.getElementById('btnSearchSerialModal');
             const headerBrandInput = document.getElementById('headerBrandInput');
             const headerModelInput = document.getElementById('headerModelInput');
-            const tableBatchModelInput = document.getElementById('tableBatchModelInput');
-            const syncModelCheckbox = document.getElementById('syncModelCheckbox');
-            const btnUpdateAllModels = document.getElementById('btnUpdateAllModels');
-            const modelUpdateNotice = document.getElementById('modelUpdateNotice');
-            const modelUpdateNoticeText = document.getElementById('modelUpdateNoticeText');
+            const editIncomingForm = document.getElementById('editIncomingForm');
+
+            // --- MODEL FOLDERS SYSTEM ---
+            const knownModels = new Set();
+            const initialHeaderModel = headerModelInput?.value.trim() || '{{ $transmittal->model }}';
+            if (initialHeaderModel) {
+                knownModels.add(initialHeaderModel);
+            }
+
+            // Read models already present in existing rows
+            container.querySelectorAll('.subtable-row').forEach(r => {
+                const m = r.querySelector('.row-model')?.value.trim();
+                if (m) knownModels.add(m);
+            });
+
+            // Active folder: first existing model (no "Lahat / All")
+            const allKnownModelsList = Array.from(knownModels);
+            let activeModelFilter = allKnownModelsList.length > 0 ? allKnownModelsList[0] : (initialHeaderModel || '');
+
+            const modelFoldersNav = document.getElementById('modelFoldersNav');
+            const activeModelLabel = document.getElementById('activeModelLabel');
+            const activeModelBadge = document.getElementById('activeModelBadge');
+
+            function escapeHtml(str) {
+                if (!str) return '';
+                return String(str)
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#039;');
+            }
+
+            function getModelCounts() {
+                const counts = {};
+                knownModels.forEach(m => {
+                    counts[m] = 0;
+                });
+
+                const rows = container.querySelectorAll('.subtable-row');
+                rows.forEach(r => {
+                    const sn = r.querySelector('.row-sn')?.value.trim();
+                    const mac = r.querySelector('.row-mac')?.value.trim();
+                    const itemId = r.querySelector('.row-item-id')?.value;
+                    const m = r.querySelector('.row-model')?.value.trim();
+
+                    if (sn || mac || itemId) {
+                        if (m) {
+                            counts[m] = (counts[m] || 0) + 1;
+                        }
+                    }
+                });
+
+                return counts;
+            }
+
+            function renderModelFolderTabs() {
+                if (!modelFoldersNav) return;
+
+                // Dynamically include any row model that exists
+                container.querySelectorAll('.subtable-row').forEach(r => {
+                    const m = r.querySelector('.row-model')?.value.trim();
+                    if (m && !knownModels.has(m)) {
+                        knownModels.add(m);
+                    }
+                });
+
+                if (!activeModelFilter && knownModels.size > 0) {
+                    activeModelFilter = Array.from(knownModels)[0];
+                }
+
+                const counts = getModelCounts();
+                modelFoldersNav.innerHTML = '';
+
+                // Only render folders for models that exist (Walang "Lahat / All", kung ano lang nandon)
+                knownModels.forEach(modelName => {
+                    if (!modelName) return;
+                    const count = counts[modelName] || 0;
+                    const isActive = (activeModelFilter.toLowerCase() === modelName.toLowerCase());
+                    const tab = createFolderTabElement(modelName, modelName, count, isActive);
+                    modelFoldersNav.appendChild(tab);
+                });
+
+                // Update active badge display
+                if (activeModelLabel) {
+                    const count = counts[activeModelFilter] || 0;
+                    activeModelLabel.innerHTML = `${escapeHtml(activeModelFilter || 'Walang Model')} <span style="opacity: 0.85;">(${count} units)</span>`;
+                    if (activeModelBadge) {
+                        activeModelBadge.style.background = '#FEF3C7';
+                        activeModelBadge.style.borderColor = '#FCD34D';
+                        activeModelBadge.style.color = '#92400E';
+                    }
+                }
+            }
+
+            function createFolderTabElement(modelKey, labelText, count, isActive) {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = `model-folder-tab ${isActive ? 'active' : ''}`;
+                
+                if (isActive) {
+                    btn.style.cssText = `
+                        display: inline-flex;
+                        align-items: center;
+                        gap: 8px;
+                        padding: 7px 16px;
+                        background: linear-gradient(135deg, #00205B 0%, #1E40AF 100%);
+                        color: #FFFFFF;
+                        border: 2px solid #2563EB;
+                        border-radius: 8px;
+                        font-size: 0.82rem;
+                        font-weight: 700;
+                        cursor: pointer;
+                        box-shadow: 0 3px 8px rgba(30, 64, 175, 0.3);
+                        transition: all 0.2s ease;
+                    `;
+                } else {
+                    btn.style.cssText = `
+                        display: inline-flex;
+                        align-items: center;
+                        gap: 8px;
+                        padding: 7px 16px;
+                        background: #F8FAFC;
+                        color: #334155;
+                        border: 1.5px solid #CBD5E1;
+                        border-radius: 8px;
+                        font-size: 0.82rem;
+                        font-weight: 600;
+                        cursor: pointer;
+                        transition: all 0.2s ease;
+                    `;
+                }
+
+                const folderIcon = isActive
+                    ? '<i class="bi bi-folder2-open" style="color: #FBBF24; font-size: 1.1rem;"></i>'
+                    : '<i class="bi bi-folder-fill" style="color: #F59E0B; font-size: 1.05rem;"></i>';
+
+                const badgeStyle = isActive
+                    ? 'background: rgba(255, 255, 255, 0.25); color: #FFFFFF;'
+                    : 'background: #E2E8F0; color: #475569;';
+
+                btn.innerHTML = `
+                    ${folderIcon}
+                    <span>${escapeHtml(labelText)}</span>
+                    <span style="${badgeStyle} font-size: 0.72rem; font-weight: 800; padding: 2px 7px; border-radius: 12px; margin-left: 2px;">
+                        ${count}
+                    </span>
+                `;
+
+                btn.addEventListener('mouseenter', () => {
+                    if (!btn.classList.contains('active')) {
+                        btn.style.background = '#F1F5F9';
+                        btn.style.borderColor = '#94A3B8';
+                    }
+                });
+                btn.addEventListener('mouseleave', () => {
+                    if (!btn.classList.contains('active')) {
+                        btn.style.background = '#F8FAFC';
+                        btn.style.borderColor = '#CBD5E1';
+                    }
+                });
+
+                btn.addEventListener('click', () => {
+                    setActiveModelFolder(modelKey);
+                });
+
+                return btn;
+            }
+
+            function setActiveModelFolder(modelKey) {
+                activeModelFilter = modelKey;
+                applyModelFilterToRows();
+                renderModelFolderTabs();
+                focusFirstVisibleRow();
+            }
+
+            function applyModelFilterToRows() {
+                const rows = container.querySelectorAll('.subtable-row');
+
+                rows.forEach(r => {
+                    const rowModelInput = r.querySelector('.row-model');
+                    const rowModel = rowModelInput ? rowModelInput.value.trim() : '';
+
+                    if (!activeModelFilter) {
+                        r.style.display = 'grid';
+                    } else if (rowModel.toLowerCase() === activeModelFilter.toLowerCase()) {
+                        r.style.display = 'grid';
+                    } else {
+                        r.style.display = 'none';
+                    }
+                });
+
+                // Renumber only visible rows sequentially
+                let visibleIndex = 1;
+                rows.forEach(r => {
+                    if (r.style.display !== 'none') {
+                        const num = r.querySelector('.subtable-row-num');
+                        if (num) num.textContent = visibleIndex++;
+                    }
+                });
+            }
+
+            function focusFirstVisibleRow() {
+                const rows = container.querySelectorAll('.subtable-row');
+                for (let r of rows) {
+                    if (r.style.display !== 'none') {
+                        const sn = r.querySelector('.row-sn');
+                        if (sn && !sn.value.trim()) {
+                            sn.focus();
+                            sn.select();
+                            break;
+                        }
+                    }
+                }
+                // Walang kusa/extra blank rows na idinadagdag - kung ano lang yung nandon
+            }
+
+            // Sync header Brand change to all rows
+            if (headerBrandInput) {
+                headerBrandInput.addEventListener('input', function() {
+                    const val = this.value;
+                    container.querySelectorAll('.row-brand').forEach(input => {
+                        input.value = val;
+                    });
+                });
+            }
+
+            // When header Model input changes, register it in known models
+            if (headerModelInput) {
+                headerModelInput.addEventListener('input', function() {
+                    const val = this.value.trim();
+                    if (val) {
+                        knownModels.add(val);
+                        renderModelFolderTabs();
+                    }
+                });
+            }
+
+            // Listen to row model changes: register new models & update counts
+            container.addEventListener('input', function(e) {
+                if (e.target && e.target.classList.contains('row-model')) {
+                    const val = e.target.value.trim();
+                    if (val && !knownModels.has(val)) {
+                        knownModels.add(val);
+                    }
+                    renderModelFolderTabs();
+                }
+            });
+
+            // Ensure all rows are unhidden on form submit so all items are sent
+            if (editIncomingForm) {
+                editIncomingForm.addEventListener('submit', function() {
+                    container.querySelectorAll('.subtable-row').forEach(r => {
+                        r.style.display = 'grid';
+                    });
+                });
+            }
 
             // Update row numbers and calculate total filled units count & duplicate check
             function updateRowNumbersAndCount() {
                 const rows = container.querySelectorAll('.subtable-row');
                 let count = 0;
                 const serialMap = {};
+                let visibleIndex = 1;
 
-                rows.forEach((r, idx) => {
-                    const num = r.querySelector('.subtable-row-num');
-                    if (num) num.textContent = idx + 1;
-
+                rows.forEach(r => {
                     const sn = r.querySelector('.row-sn')?.value.trim();
                     const mac = r.querySelector('.row-mac')?.value.trim();
                     if (sn || mac) {
@@ -461,6 +715,11 @@
                     }
                     if (sn) {
                         serialMap[sn] = (serialMap[sn] || 0) + 1;
+                    }
+
+                    if (r.style.display !== 'none') {
+                        const num = r.querySelector('.subtable-row-num');
+                        if (num) num.textContent = visibleIndex++;
                     }
                 });
 
@@ -491,159 +750,9 @@
                 if (bottomTotalRowsBadge) {
                     bottomTotalRowsBadge.textContent = rows.length;
                 }
+
+                renderModelFolderTabs();
             }
-
-            // Save model directly to database via AJAX
-            function saveModelToDatabaseViaAjax(modelVal) {
-                if (!btnUpdateAllModels) return;
-
-                const originalBtnHtml = btnUpdateAllModels.innerHTML;
-                btnUpdateAllModels.disabled = true;
-                btnUpdateAllModels.innerHTML = '<i class="bi bi-arrow-repeat spin-icon"></i> Saving...';
-
-                fetch(updateModelAllUrl, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': csrfToken,
-                        'Accept': 'application/json'
-                    },
-                    body: JSON.stringify({ model: modelVal })
-                })
-                .then(res => res.json())
-                .then(data => {
-                    btnUpdateAllModels.disabled = false;
-                    if (data.success) {
-                        btnUpdateAllModels.innerHTML = '<i class="bi bi-check2"></i> Saved';
-                        btnUpdateAllModels.style.borderColor = '#16A34A';
-                        btnUpdateAllModels.style.color = '#16A34A';
-
-                        if (modelUpdateNotice && modelUpdateNoticeText) {
-                            modelUpdateNoticeText.innerHTML = `<strong>Saved to database!</strong> Na-save sa DB ang model "${modelVal}" (${data.affected_count || 'lahat ng'} items).`;
-                            modelUpdateNotice.style.display = 'block';
-                            setTimeout(() => {
-                                modelUpdateNotice.style.display = 'none';
-                            }, 5000);
-                        }
-
-                        setTimeout(() => {
-                            btnUpdateAllModels.innerHTML = originalBtnHtml;
-                            btnUpdateAllModels.style.borderColor = '';
-                            btnUpdateAllModels.style.color = '';
-                        }, 2500);
-                    } else {
-                        btnUpdateAllModels.innerHTML = originalBtnHtml;
-                        alert(data.message || 'May error sa pag-save ng model sa database.');
-                    }
-                })
-                .catch(err => {
-                    btnUpdateAllModels.disabled = false;
-                    btnUpdateAllModels.innerHTML = originalBtnHtml;
-                    console.error('AJAX model update failed:', err);
-                    alert('Hindi ma-save ang model sa database. Pakisuri ang network o koneksyon.');
-                });
-            }
-
-            // Apply model to all unit rows (UI and optionally DB via AJAX)
-            function applyModelToAllRows(saveToDb = false) {
-                const modelVal = tableBatchModelInput ? tableBatchModelInput.value.trim() : (headerModelInput ? headerModelInput.value.trim() : '');
-
-                // Keep header model in sync as well
-                if (headerModelInput && tableBatchModelInput && headerModelInput.value !== modelVal) {
-                    headerModelInput.value = modelVal;
-                }
-
-                const rowModelInputs = container.querySelectorAll('.row-model');
-
-                rowModelInputs.forEach(input => {
-                    input.value = modelVal;
-                    input.style.transition = 'background-color 0.3s';
-                    input.style.backgroundColor = '#E0F2FE';
-                    setTimeout(() => {
-                        input.style.backgroundColor = '';
-                    }, 600);
-                });
-
-                if (saveToDb && modelVal !== '') {
-                    saveModelToDatabaseViaAjax(modelVal);
-                }
-            }
-
-            // Sync header Brand change to rows
-            if (headerBrandInput) {
-                headerBrandInput.addEventListener('input', function() {
-                    const val = this.value;
-                    container.querySelectorAll('.row-brand').forEach(input => {
-                        input.value = val;
-                    });
-                });
-            }
-
-            // Sync top header model to batch model input
-            if (headerModelInput) {
-                headerModelInput.addEventListener('input', function() {
-                    if (tableBatchModelInput && tableBatchModelInput.value !== this.value) {
-                        tableBatchModelInput.value = this.value;
-                    }
-                    if (syncModelCheckbox && syncModelCheckbox.checked) {
-                        applyModelToAllRows(false);
-                    }
-                });
-            }
-
-            // Batch model input typing & Enter key trigger
-            if (tableBatchModelInput) {
-                tableBatchModelInput.addEventListener('input', function() {
-                    if (headerModelInput && headerModelInput.value !== this.value) {
-                        headerModelInput.value = this.value;
-                    }
-                    if (syncModelCheckbox && syncModelCheckbox.checked) {
-                        applyModelToAllRows(false);
-                    }
-                });
-
-                tableBatchModelInput.addEventListener('keydown', function(e) {
-                    if (e.key === 'Enter') {
-                        e.preventDefault();
-                        if (syncModelCheckbox) {
-                            syncModelCheckbox.checked = true;
-                        }
-                        applyModelToAllRows(true);
-                    }
-                });
-            }
-
-            // Click Update button: check checkbox, apply to rows, and save directly to DB via AJAX!
-            if (btnUpdateAllModels) {
-                btnUpdateAllModels.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    if (syncModelCheckbox) {
-                        syncModelCheckbox.checked = true;
-                    }
-                    applyModelToAllRows(true);
-                });
-            }
-
-            // When checkbox is toggled on, if model has value, apply to rows and save to DB
-            if (syncModelCheckbox) {
-                syncModelCheckbox.addEventListener('change', function() {
-                    const modelVal = tableBatchModelInput ? tableBatchModelInput.value.trim() : (headerModelInput ? headerModelInput.value.trim() : '');
-                    if (this.checked && modelVal !== '') {
-                        applyModelToAllRows(true);
-                    }
-                });
-            }
-
-            // Ensure individual row models remain freely editable:
-            // If user manually edits a specific row's model, uncheck syncModelCheckbox
-            // so subsequent typing won't overwrite their custom edit.
-            container.addEventListener('input', function(e) {
-                if (e.target && e.target.classList.contains('row-model')) {
-                    if (syncModelCheckbox && syncModelCheckbox.checked) {
-                        syncModelCheckbox.checked = false;
-                    }
-                }
-            });
 
             // Create a row DOM element purely client-side
             function createBlankRowElement(itemNo) {
@@ -651,8 +760,10 @@
                 rowDiv.className = 'subtable-row';
                 rowDiv.style.cssText = 'grid-template-columns: 40px 2fr 2fr 1.2fr 1.2fr 30px 40px; gap: 8px;';
 
-                const brandVal = headerBrandInput?.value || '';
-                const modelVal = tableBatchModelInput?.value || headerModelInput?.value || '';
+                const brandVal = headerBrandInput?.value || '{{ $transmittal->brand }}';
+                const modelVal = (activeModelFilter && activeModelFilter !== 'ALL')
+                    ? activeModelFilter
+                    : (headerModelInput?.value || '{{ $transmittal->model }}');
 
                 rowDiv.innerHTML = `
                     <input type="hidden" name="item_id[]" class="row-item-id" value="">
@@ -664,10 +775,10 @@
                         <input type="text" name="mac_address[]" class="form-control mono row-mac" placeholder="Scan MAC Address">
                     </div>
                     <div>
-                        <input type="text" name="row_model[]" class="form-control row-model" value="${modelVal}" placeholder="Model">
+                        <input type="text" name="row_model[]" class="form-control row-model" value="${escapeHtml(modelVal)}" placeholder="Model">
                     </div>
                     <div>
-                        <input type="text" name="row_brand[]" list="brandSuggestions" class="form-control row-brand" value="${brandVal}" placeholder="Brand">
+                        <input type="text" name="row_brand[]" list="brandSuggestions" class="form-control row-brand" value="${escapeHtml(brandVal)}" placeholder="Brand">
                     </div>
                     <div class="row-status-indicator" style="display: flex; align-items: center; justify-content: center; font-size: 0.9rem;"></div>
                     <div style="display: flex; align-items: center; justify-content: center;">
@@ -696,20 +807,26 @@
 
                 if (autoFocus) {
                     const allRows = container.querySelectorAll('.subtable-row');
-                    const targetRow = allRows[currentRowsCount];
-                    if (targetRow) {
-                        const sn = targetRow.querySelector('.row-sn');
-                        if (sn) {
-                            sn.focus();
-                            sn.select();
+                    for (let r of allRows) {
+                        if (r.style.display !== 'none') {
+                            const sn = r.querySelector('.row-sn');
+                            if (sn && !sn.value.trim()) {
+                                sn.focus();
+                                sn.select();
+                                break;
+                            }
                         }
                     }
                 }
             }
 
-            // Barcode continuous navigation helper
+            // Barcode continuous navigation helper: stays strictly within the active model folder
             function moveToNextRowOrAddNew(currentRow) {
-                const nextRow = currentRow.nextElementSibling;
+                let nextRow = currentRow.nextElementSibling;
+                while (nextRow && nextRow.classList.contains('subtable-row') && nextRow.style.display === 'none') {
+                    nextRow = nextRow.nextElementSibling;
+                }
+
                 if (nextRow && nextRow.classList.contains('subtable-row')) {
                     const nextSn = nextRow.querySelector('.row-sn');
                     if (nextSn) {
@@ -802,6 +919,7 @@
 
             // Attach listeners to initially rendered rows
             container.querySelectorAll('.subtable-row').forEach(row => attachRowListeners(row));
+            applyModelFilterToRows();
             updateRowNumbersAndCount();
 
             // Button to generate bulk rows
