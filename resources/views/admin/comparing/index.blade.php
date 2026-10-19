@@ -426,7 +426,7 @@
             <span id="scanStatusTime" style="font-size: 0.75rem; opacity: 0.9;"></span>
         </div>
 
-        <!-- Quick Bulk Applicator for Technical Diagnostic & Replaced Parts -->
+        <!-- Quick Bulk Applicator for Technical Diagnostic, Replaced Parts & Box -->
         <div style="background: #F8FAFC; border: 1.5px solid #CBD5E1; border-radius: 8px; padding: 8px 14px; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
             <div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
                 <!-- Bulk Diagnostic -->
@@ -460,10 +460,21 @@
                         Apply to All
                     </button>
                 </div>
+
+                <!-- Bulk Box -->
+                <div style="display: flex; align-items: center; gap: 6px;">
+                    <span style="font-weight: 800; font-size: 0.8rem; color: #0284C7; white-space: nowrap;">
+                        <i class="bi bi-box-seam"></i> BULK BOX:
+                    </span>
+                    <input type="text" id="quickBulkBoxInput" class="form-control form-control-sm" placeholder="e.g. B1" style="font-size: 0.82rem; font-weight: 700; width: 75px; height: 31px; text-transform: uppercase; text-align: center; border: 1px solid #94A3B8;">
+                    <button type="button" id="btnQuickApplyBox" class="btn btn-sm btn-info text-white" style="font-size: 0.78rem; font-weight: 700; height: 31px; padding: 2px 10px; background: #0284C7; border-color: #0284C7;">
+                        Apply to All
+                    </button>
+                </div>
             </div>
 
             <div style="font-size: 0.76rem; color: #64748B; font-weight: 600;">
-                <i class="bi bi-info-circle"></i> May dropdown din bawat row sa table sa ibaba.
+                <i class="bi bi-info-circle"></i> Walang 20 pcs box limit — dere-derecho ang Box No. hanggang manual palitan.
             </div>
         </div>
 
@@ -733,7 +744,8 @@
                     let hasMatch = false;
                     let optionsHtml = `<option value="">-- Select Diagnostic --</option>`;
                     
-                    if (val && !TECHNICAL_DIAGNOSTIC_OPTIONS.includes(val)) {
+                    const matchedOpt = TECHNICAL_DIAGNOSTIC_OPTIONS.find(opt => opt.toUpperCase() === val.toUpperCase());
+                    if (val && !matchedOpt) {
                         optionsHtml += `<option value="${escapeHtml(val)}" selected>${escapeHtml(val)}</option>`;
                         hasMatch = true;
                     }
@@ -1816,17 +1828,26 @@
                     const activeModel = headerModelSelect ? headerModelSelect.value : '';
                     const defaultStatus = headerBatchStatus ? headerBatchStatus.value : 'GOOD';
 
+                    // Maintain continuous box sequence: inherit from the last row or default to 'B1'
+                    let currentBox = 'B1';
+                    if (tableRows.length > 0) {
+                        for (let j = tableRows.length - 1; j >= 0; j--) {
+                            if (tableRows[j].box_no && tableRows[j].box_no.trim() !== '') {
+                                currentBox = tableRows[j].box_no.trim();
+                                break;
+                            }
+                        }
+                    }
+
                     for (let i = 0; i < qty; i++) {
                         const rowIdx = startIdx + i;
-                        // Auto-calculate Box: rows 0-19 -> B1, rows 20-39 -> B2, rows 40-59 -> B3...
-                        const autoBox = `B${Math.floor(rowIdx / 20) + 1}`;
 
                         tableRows.push({
                             id: null,
                             item_no: rowIdx + 1,
                             serial_number: '',
                             mac_address: '',
-                            box_no: autoBox,
+                            box_no: currentBox,
                             brand: activeBrand,
                             model: activeModel,
                             technical_diagnostic: '',
@@ -1844,10 +1865,19 @@
                 // Render Table rows matching spreadsheet view
                 function renderTable() {
                     let html = '';
+                    let runningBox = 'B1';
+
                     tableRows.forEach((r, idx) => {
                         const isVerified = r.is_matched && r.id;
                         const rowClass = isVerified ? 'row-scanned-matched' : '';
-                        const autoBox = `B${Math.floor(idx / 20) + 1}`;
+
+                        // Maintain continuous box sequence: if not explicitly set, inherit from runningBox
+                        if (r.box_no && r.box_no.trim() !== '') {
+                            runningBox = r.box_no.trim();
+                        } else {
+                            r.box_no = runningBox;
+                        }
+
                         const isGoodStatus = (r.repair_status === 'GOOD' || r.repair_status === 'In process' ||
                             isVerified);
 
@@ -1906,11 +1936,11 @@
                                        autocomplete="off">
                             </td>
 
-                            <!-- BOX NO. (Auto increments: 1-20 -> B1, 21-40 -> B2) -->
+                            <!-- BOX NO. (Continuous box numbering - user changes when switching box) -->
                             <td style="text-align: center;">
                                 <div style="display: flex; align-items: center; justify-content: center; gap: 4px;">
                                     <input type="text" name="row_box[${r.id || 'row_' + idx}]" 
-                                           value="${escapeHtml(r.box_no || autoBox)}" 
+                                           value="${escapeHtml(r.box_no || 'B1')}" 
                                            class="excel-cell-input row-box" 
                                            data-idx="${idx}" 
                                            style="text-align: center; font-weight: 800; color: #0284C7; text-transform: uppercase; width: 50px;">
@@ -1983,7 +2013,22 @@
 
                     matrixTbody.querySelectorAll('.row-box').forEach(inp => {
                         inp.addEventListener('input', function() {
-                            tableRows[parseInt(this.getAttribute('data-idx'))].box_no = this.value;
+                            const idx = parseInt(this.getAttribute('data-idx'));
+                            const oldBox = tableRows[idx].box_no || '';
+                            const newBox = this.value;
+                            tableRows[idx].box_no = newBox;
+
+                            // Propagate changed box number to subsequent blank/unscanned rows that still had the old box
+                            for (let k = idx + 1; k < tableRows.length; k++) {
+                                if (!tableRows[k].is_matched && !tableRows[k].serial_number && (!tableRows[k].box_no || tableRows[k].box_no === oldBox)) {
+                                    tableRows[k].box_no = newBox;
+                                    const nextBoxInp = matrixTbody.querySelector(`.row-box[data-idx="${k}"]`);
+                                    if (nextBoxInp) nextBoxInp.value = newBox;
+                                } else {
+                                    break;
+                                }
+                            }
+
                             updateCounters();
                             triggerAutoSave(false);
                         });
@@ -2003,10 +2048,12 @@
                         btn.addEventListener('click', function() {
                             const idx = parseInt(this.getAttribute('data-idx'));
                             tableRows.splice(idx, 1);
-                            // Re-index & re-box
+                            // Re-index item_no only (preserve user-assigned box numbers)
                             tableRows.forEach((r, i) => {
                                 r.item_no = i + 1;
-                                r.box_no = `B${Math.floor(i / 20) + 1}`;
+                                if (!r.box_no || r.box_no.trim() === '') {
+                                    r.box_no = (i > 0 && tableRows[i - 1]?.box_no) ? tableRows[i - 1].box_no : 'B1';
+                                }
                             });
                             if (tableRows.length === 0) {
                                 addBlankRows(1);
@@ -2146,7 +2193,7 @@
                                     }
                                 }
 
-                                const autoBoxNo = `B${Math.floor(rowIndex / 20) + 1}`;
+                                const fallbackBox = tableRows[rowIndex].box_no || (rowIndex > 0 && tableRows[rowIndex - 1]?.box_no ? tableRows[rowIndex - 1].box_no : 'B1');
                                 tableRows[rowIndex].id = matchedByMac.id;
                                 tableRows[rowIndex].serial_number = matchedByMac.serial_number || '';
                                 tableRows[rowIndex].mac_address = matchedByMac.mac_address || scannedCode;
@@ -2157,7 +2204,7 @@
                                 tableRows[rowIndex].replace_parts = tableRows[rowIndex].replace_parts ||
                                     matchedByMac.replace_parts || 'N/A';
                                 tableRows[rowIndex].repair_status = 'GOOD';
-                                tableRows[rowIndex].box_no = tableRows[rowIndex].box_no || autoBoxNo;
+                                tableRows[rowIndex].box_no = tableRows[rowIndex].box_no || fallbackBox;
                                 tableRows[rowIndex].is_matched = true;
 
                                 soundSuccess();
@@ -2195,7 +2242,7 @@
                         return snC && snC === cleanCode;
                     });
 
-                    const autoBoxNo = `B${Math.floor(rowIndex / 20) + 1}`;
+                    const fallbackBox = tableRows[rowIndex].box_no || (rowIndex > 0 && tableRows[rowIndex - 1]?.box_no ? tableRows[rowIndex - 1].box_no : 'B1');
 
                     if (matchedPoolItem) {
                         // Strict Brand Verification
@@ -2240,7 +2287,7 @@
                         tableRows[rowIndex].replace_parts = tableRows[rowIndex].replace_parts || matchedPoolItem
                             .replace_parts || 'N/A';
                         tableRows[rowIndex].repair_status = 'GOOD';
-                        tableRows[rowIndex].box_no = tableRows[rowIndex].box_no || autoBoxNo;
+                        tableRows[rowIndex].box_no = tableRows[rowIndex].box_no || fallbackBox;
                         tableRows[rowIndex].is_matched = true;
 
                         soundSuccess();
@@ -2319,7 +2366,7 @@
                             tableRows[rowIndex].replace_parts = tableRows[rowIndex].replace_parts || item
                                 .replace_parts || 'N/A';
                             tableRows[rowIndex].repair_status = 'GOOD';
-                            tableRows[rowIndex].box_no = tableRows[rowIndex].box_no || autoBoxNo;
+                            tableRows[rowIndex].box_no = tableRows[rowIndex].box_no || fallbackBox;
                             tableRows[rowIndex].is_matched = true;
 
                             soundSuccess();
@@ -2640,6 +2687,33 @@
                         renderTable();
                         triggerAutoSave(true);
                         showStatus(`<i class="bi bi-check-circle-fill"></i> Na-apply ang replaced part na "<strong>${escapeHtml(val)}</strong>" sa lahat ng ${tableRows.length} rows!`, 'success');
+                    });
+                }
+
+                // Quick Bulk Box Applicator
+                const quickBulkBoxInput = document.getElementById('quickBulkBoxInput');
+                const btnQuickApplyBox = document.getElementById('btnQuickApplyBox');
+
+                if (btnQuickApplyBox && quickBulkBoxInput) {
+                    btnQuickApplyBox.addEventListener('click', function() {
+                        const val = quickBulkBoxInput.value.trim().toUpperCase();
+                        if (!val) {
+                            Swal.fire({
+                                icon: 'warning',
+                                title: 'Maglagay ng Box No.',
+                                text: 'Pakilagay ang Box No. na nais i-apply (halimbawa: B1, B2).',
+                                confirmButtonColor: '#2563EB'
+                            });
+                            return;
+                        }
+                        if (tableRows.length === 0) return;
+                        tableRows.forEach(r => {
+                            r.box_no = val;
+                        });
+                        renderTable();
+                        updateCounters();
+                        triggerAutoSave(true);
+                        showStatus(`<i class="bi bi-check-circle-fill"></i> Na-apply ang Box No. na "<strong>${escapeHtml(val)}</strong>" sa lahat ng ${tableRows.length} rows!`, 'success');
                     });
                 }
 

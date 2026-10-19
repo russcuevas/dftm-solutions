@@ -345,12 +345,17 @@ class ComparingController extends Controller
                 'encoded_by' => Auth::id(),
             ]);
 
-            // 2. Update each inventory item to link to this batch and apply Traceability attributes in sequence (20 pcs per box)
+            // 2. Update each inventory item to link to this batch and apply Traceability attributes in sequence
+            $currentBox = 'B1';
             foreach ($items as $index => $item) {
                 $diag = !empty($rowDiagnostics[$item->id]) ? trim($rowDiagnostics[$item->id]) : ($item->technical_diagnostic ?: null);
                 $part = !empty($rowParts[$item->id]) ? trim($rowParts[$item->id]) : ($item->replace_parts ?: 'N/A');
-                $autoBox = 'B' . (floor($index / 20) + 1);
-                $box = !empty($rowBoxes[$item->id]) ? trim($rowBoxes[$item->id]) : ($item->box_no ?: $autoBox);
+                if (!empty($rowBoxes[$item->id])) {
+                    $box = trim($rowBoxes[$item->id]);
+                    $currentBox = $box;
+                } else {
+                    $box = $item->box_no ?: $currentBox;
+                }
                 $stat = !empty($rowStatuses[$item->id]) ? trim($rowStatuses[$item->id]) : ($defaultStatus ?: 'GOOD');
 
                 $item->update([

@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 class InventoryItem extends Model
 {
     public const TECHNICAL_DIAGNOSTICS = [
+        'Tested and clean',
         'NO POWER',
         'INTERMITTENT POWER',
         'NO WIFI DETECTED',
