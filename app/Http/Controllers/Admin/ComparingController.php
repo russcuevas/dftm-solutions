@@ -85,22 +85,22 @@ class ComparingController extends Controller
             ->whereNull('batch_id')
             ->where(function ($q) use ($company) {
                 $q->where('company_name', $company)
-                  ->orWhereHas('transmittal', function ($tq) use ($company) {
-                      $tq->where('company_name', $company);
-                  });
+                    ->orWhereHas('transmittal', function ($tq) use ($company) {
+                        $tq->where('company_name', $company);
+                    });
             });
 
         $allItemsForCompany = (clone $baseQuery)->get();
 
         // Build structured brands and models with counts
         $brandsData = [];
-        $groupedByBrand = $allItemsForCompany->groupBy(function($it) {
+        $groupedByBrand = $allItemsForCompany->groupBy(function ($it) {
             return trim($it->brand ?: 'UNKNOWN');
         });
 
         foreach ($groupedByBrand as $bName => $bItems) {
             $modelsData = [];
-            $groupedByModel = $bItems->groupBy(function($it) {
+            $groupedByModel = $bItems->groupBy(function ($it) {
                 return trim($it->model ?: 'UNKNOWN');
             });
 
@@ -162,8 +162,8 @@ class ComparingController extends Controller
                     'transmittal_id' => $item->transmittal_id,
                     'transmittal_no' => $item->transmittal?->transmittal_no ?? 'TR-UNASSIGNED',
                     'date_received' => $item->date_delivered ? $item->date_delivered->format('Y-m-d') : ($item->transmittal?->date_received ? $item->transmittal->date_received->format('Y-m-d') : ''),
-                    'technical_diagnostic' => $item->technical_diagnostic ?: 'Test and Clean',
-                    'replace_parts' => $item->replace_parts ?: 'GOOD',
+                    'technical_diagnostic' => $item->technical_diagnostic ?? '',
+                    'replace_parts' => $item->replace_parts ?? 'N/A',
                     'repair_status' => $item->repair_status ?: 'In process',
                     'stock_status' => $item->stock_status ?: 'IN_STOCK',
                 ];
@@ -194,18 +194,18 @@ class ComparingController extends Controller
         if (!empty($company)) {
             $query->where(function ($q) use ($company) {
                 $q->where('company_name', $company)
-                  ->orWhereHas('transmittal', function ($tq) use ($company) {
-                      $tq->where('company_name', $company);
-                  });
+                    ->orWhereHas('transmittal', function ($tq) use ($company) {
+                        $tq->where('company_name', $company);
+                    });
             });
         }
 
         $item = (clone $query)->where(function ($q) use ($code, $cleanCode) {
             $q->where('serial_number', $code)
-              ->orWhere('mac_address', $code);
+                ->orWhere('mac_address', $code);
             if (!empty($cleanCode)) {
                 $q->orWhereRaw("REPLACE(REPLACE(REPLACE(serial_number, ':', ''), '-', ''), ' ', '') = ?", [$cleanCode])
-                  ->orWhereRaw("REPLACE(REPLACE(REPLACE(mac_address, ':', ''), '-', ''), ' ', '') = ?", [$cleanCode]);
+                    ->orWhereRaw("REPLACE(REPLACE(REPLACE(mac_address, ':', ''), '-', ''), ' ', '') = ?", [$cleanCode]);
             }
         })->first();
 
@@ -213,7 +213,7 @@ class ComparingController extends Controller
         if (!$item) {
             $item = (clone $query)->where(function ($q) use ($code) {
                 $q->where('serial_number', 'LIKE', "%{$code}%")
-                  ->orWhere('mac_address', 'LIKE', "%{$code}%");
+                    ->orWhere('mac_address', 'LIKE', "%{$code}%");
             })->first();
         }
 
@@ -222,10 +222,10 @@ class ComparingController extends Controller
             $anywhereItem = InventoryItem::with(['transmittal', 'batch'])
                 ->where(function ($q) use ($code, $cleanCode) {
                     $q->where('serial_number', $code)
-                      ->orWhere('mac_address', $code);
+                        ->orWhere('mac_address', $code);
                     if (!empty($cleanCode)) {
                         $q->orWhereRaw("REPLACE(REPLACE(REPLACE(serial_number, ':', ''), '-', ''), ' ', '') = ?", [$cleanCode])
-                          ->orWhereRaw("REPLACE(REPLACE(REPLACE(mac_address, ':', ''), '-', ''), ' ', '') = ?", [$cleanCode]);
+                            ->orWhereRaw("REPLACE(REPLACE(REPLACE(mac_address, ':', ''), '-', ''), ' ', '') = ?", [$cleanCode]);
                     }
                 })->first();
 
@@ -278,8 +278,8 @@ class ComparingController extends Controller
                 'model' => $item->model,
                 'company_name' => $item->company_name ?: ($item->transmittal?->company_name ?? ''),
                 'transmittal_no' => $item->transmittal?->transmittal_no ?? 'TR-UNASSIGNED',
-                'technical_diagnostic' => $item->technical_diagnostic ?: 'Test and Clean',
-                'replace_parts' => $item->replace_parts ?: 'GOOD',
+                'technical_diagnostic' => $item->technical_diagnostic ?? '',
+                'replace_parts' => $item->replace_parts ?? 'N/A',
                 'repair_status' => $item->repair_status ?: 'In process',
                 'stock_status' => $item->stock_status ?: 'IN_STOCK',
             ],
@@ -316,7 +316,7 @@ class ComparingController extends Controller
             $items = InventoryItem::whereIn('id', $selectedItemIds)
                 ->with('transmittal')
                 ->get()
-                ->sortBy(function($model) use ($selectedItemIds) {
+                ->sortBy(function ($model) use ($selectedItemIds) {
                     return array_search($model->id, $selectedItemIds);
                 })->values();
             $firstItem = $items->first();
@@ -347,8 +347,8 @@ class ComparingController extends Controller
 
             // 2. Update each inventory item to link to this batch and apply Traceability attributes in sequence (20 pcs per box)
             foreach ($items as $index => $item) {
-                $diag = !empty($rowDiagnostics[$item->id]) ? trim($rowDiagnostics[$item->id]) : ($item->technical_diagnostic ?: 'Test and Clean');
-                $part = !empty($rowParts[$item->id]) ? trim($rowParts[$item->id]) : ($item->replace_parts ?: 'GOOD');
+                $diag = !empty($rowDiagnostics[$item->id]) ? trim($rowDiagnostics[$item->id]) : ($item->technical_diagnostic ?: null);
+                $part = !empty($rowParts[$item->id]) ? trim($rowParts[$item->id]) : ($item->replace_parts ?: 'N/A');
                 $autoBox = 'B' . (floor($index / 20) + 1);
                 $box = !empty($rowBoxes[$item->id]) ? trim($rowBoxes[$item->id]) : ($item->box_no ?: $autoBox);
                 $stat = !empty($rowStatuses[$item->id]) ? trim($rowStatuses[$item->id]) : ($defaultStatus ?: 'GOOD');

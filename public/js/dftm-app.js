@@ -417,11 +417,22 @@ window.openItemEditModal = function (item) {
     if (document.getElementById('editSerialNumber')) document.getElementById('editSerialNumber').value = item.serial_number || '';
     if (document.getElementById('editMacAddress')) document.getElementById('editMacAddress').value = item.mac_address || '';
     if (document.getElementById('editBrand')) document.getElementById('editBrand').value = item.brand || '';
-    if (document.getElementById('editModel')) document.getElementById('editModel').value = item.model || '';
-    if (document.getElementById('editBoxNo')) document.getElementById('editBoxNo').value = item.box_no || '';
-    if (document.getElementById('editDiagnostic')) document.getElementById('editDiagnostic').value = item.technical_diagnostic || '';
-    if (document.getElementById('editReplaceParts')) document.getElementById('editReplaceParts').value = item.replace_parts || '';
-    if (document.getElementById('editRepairStatus')) document.getElementById('editRepairStatus').value = item.repair_status || 'In process';
+    if (document.getElementById('editDiagnostic')) {
+        const diagSelect = document.getElementById('editDiagnostic');
+        const diagVal = item.technical_diagnostic || '';
+        if (diagSelect.tagName === 'SELECT' && diagVal && !Array.from(diagSelect.options).some(o => o.value === diagVal)) {
+            diagSelect.add(new Option(diagVal, diagVal));
+        }
+        diagSelect.value = diagVal;
+    }
+    if (document.getElementById('editReplaceParts')) {
+        const partsSelect = document.getElementById('editReplaceParts');
+        const partsVal = item.replace_parts || '';
+        if (partsSelect.tagName === 'SELECT' && partsVal && !Array.from(partsSelect.options).some(o => o.value === partsVal)) {
+            partsSelect.add(new Option(partsVal, partsVal));
+        }
+        partsSelect.value = partsVal;
+    }
     if (document.getElementById('editStockStatus')) document.getElementById('editStockStatus').value = item.stock_status || 'IN_STOCK';
     if (document.getElementById('editNotes')) document.getElementById('editNotes').value = item.notes || '';
 

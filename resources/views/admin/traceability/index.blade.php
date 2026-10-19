@@ -243,33 +243,24 @@
             <!-- Bulk Diagnostic Apply -->
             <div style="display: flex; align-items: center; gap: 6px;">
                 <span style="font-size: 0.78rem; font-weight: 700; color: var(--dftm-slate);">DIAGNOSTIC:</span>
-                <input type="text" id="bulkDiagnosticInput" list="diagnosticSuggestions"
-                    class="form-control form-control-sm" placeholder="e.g. Test & Clean, NO POWER" style="width: 170px;">
-                <datalist id="diagnosticSuggestions">
-                    <option value="Test and Clean">
-                    <option value="Test & Clean">
-                    <option value="NO POWER">
-                    <option value="CORRODED BOARD">
-                    <option value="FIRMWARE CORRUPTED">
-                    <option value="TEST OK / GOOD">
-                    <option value="DEFECTIVE LAN PORT">
-                    <option value="LOS / NO FIBER SIGNAL">
-                </datalist>
+                <select id="bulkDiagnosticInput" class="form-select form-select-sm" style="width: 190px; font-weight: 600;">
+                    <option value="">-- Select Diagnostic --</option>
+                    @foreach (\App\Models\InventoryItem::TECHNICAL_DIAGNOSTICS as $diag)
+                        <option value="{{ $diag }}">{{ $diag }}</option>
+                    @endforeach
+                </select>
                 <button type="button" class="btn btn-primary btn-sm" id="btnApplyBulkDiagnostic">Apply</button>
             </div>
 
             <!-- Bulk Replace Parts Apply -->
             <div style="display: flex; align-items: center; gap: 6px;">
                 <span style="font-size: 0.78rem; font-weight: 700; color: var(--dftm-slate);">PARTS:</span>
-                <input type="text" id="bulkPartsInput" list="partsSuggestions" class="form-control form-control-sm"
-                    placeholder="e.g. SMD CAPACITOR / N/A" style="width: 150px;">
-                <datalist id="partsSuggestions">
-                    <option value="SMD CAPACITOR">
-                    <option value="POWER ADAPTER">
-                    <option value="POWER IC">
-                    <option value="OPTICAL TRANSCEIVER">
-                    <option value="N/A">
-                </datalist>
+                <select id="bulkPartsInput" class="form-select form-select-sm" style="width: 170px; font-weight: 600;">
+                    <option value="">-- Select Parts --</option>
+                    @foreach (\App\Models\InventoryItem::REPLACED_PARTS as $part)
+                        <option value="{{ $part }}">{{ $part }}</option>
+                    @endforeach
+                </select>
                 <button type="button" class="btn btn-primary btn-sm" id="btnApplyBulkParts">Apply</button>
             </div>
         </div>
@@ -305,14 +296,26 @@
                                     {{ $items->firstItem() ? $items->firstItem() + $loop->index : $loop->iteration }}
                                 </td>
                                 <td>
-                                    <input type="text" class="matrix-input row-diagnostic"
-                                        value="{{ $item->technical_diagnostic }}" placeholder="Diagnosis..."
-                                        list="diagnosticSuggestions">
+                                    <select class="matrix-input row-diagnostic" style="font-weight: 600; cursor: pointer; font-size: 0.82rem; padding: 2px 4px;">
+                                        <option value="">-- Select Diagnostic --</option>
+                                        @foreach (\App\Models\InventoryItem::TECHNICAL_DIAGNOSTICS as $diag)
+                                            <option value="{{ $diag }}" {{ $item->technical_diagnostic === $diag ? 'selected' : '' }}>{{ $diag }}</option>
+                                        @endforeach
+                                        @if ($item->technical_diagnostic && !in_array($item->technical_diagnostic, \App\Models\InventoryItem::TECHNICAL_DIAGNOSTICS))
+                                            <option value="{{ $item->technical_diagnostic }}" selected>{{ $item->technical_diagnostic }}</option>
+                                        @endif
+                                    </select>
                                 </td>
                                 <td>
-                                    <input type="text" class="matrix-input row-parts"
-                                        value="{{ $item->replace_parts }}" placeholder="Parts..."
-                                        list="partsSuggestions">
+                                    <select class="matrix-input row-parts" style="font-weight: 600; cursor: pointer; font-size: 0.82rem; padding: 2px 4px;">
+                                        <option value="">-- Select Parts --</option>
+                                        @foreach (\App\Models\InventoryItem::REPLACED_PARTS as $part)
+                                            <option value="{{ $part }}" {{ $item->replace_parts === $part ? 'selected' : '' }}>{{ $part }}</option>
+                                        @endforeach
+                                        @if ($item->replace_parts && !in_array($item->replace_parts, \App\Models\InventoryItem::REPLACED_PARTS))
+                                            <option value="{{ $item->replace_parts }}" selected>{{ $item->replace_parts }}</option>
+                                        @endif
+                                    </select>
                                 </td>
                                 <td>
                                     <select class="matrix-input row-status" style="font-weight: 700; cursor: pointer;">

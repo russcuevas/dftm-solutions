@@ -219,12 +219,22 @@
 
                 <div class="form-group">
                     <label class="form-label">Technical Diagnostic</label>
-                    <input type="text" name="technical_diagnostic" id="editDiagnostic" class="form-control" placeholder="e.g. NO POWER / CORRODED BOARD">
+                    <select name="technical_diagnostic" id="editDiagnostic" class="form-select">
+                        <option value="">-- Select Diagnostic --</option>
+                        @foreach (\App\Models\InventoryItem::TECHNICAL_DIAGNOSTICS as $diag)
+                            <option value="{{ $diag }}">{{ $diag }}</option>
+                        @endforeach
+                    </select>
                 </div>
 
                 <div class="form-group">
                     <label class="form-label">Replaced Parts</label>
-                    <input type="text" name="replace_parts" id="editReplaceParts" class="form-control" placeholder="e.g. SMD CAPACITOR / DC JACK / N/A">
+                    <select name="replace_parts" id="editReplaceParts" class="form-select">
+                        <option value="">-- Select Replaced Parts --</option>
+                        @foreach (\App\Models\InventoryItem::REPLACED_PARTS as $part)
+                            <option value="{{ $part }}">{{ $part }}</option>
+                        @endforeach
+                    </select>
                 </div>
 
                 <div class="form-group">
@@ -264,8 +274,25 @@ function openItemEditModal(item) {
     if (document.getElementById('editBrand')) document.getElementById('editBrand').value = item.brand || '';
     if (document.getElementById('editModel')) document.getElementById('editModel').value = item.model || '';
     if (document.getElementById('editBoxNo')) document.getElementById('editBoxNo').value = item.box_no || '';
-    if (document.getElementById('editDiagnostic')) document.getElementById('editDiagnostic').value = item.technical_diagnostic || '';
-    if (document.getElementById('editReplaceParts')) document.getElementById('editReplaceParts').value = item.replace_parts || '';
+    
+    if (document.getElementById('editDiagnostic')) {
+        const diagSelect = document.getElementById('editDiagnostic');
+        const diagVal = item.technical_diagnostic || '';
+        if (diagVal && !Array.from(diagSelect.options).some(o => o.value === diagVal)) {
+            diagSelect.add(new Option(diagVal, diagVal));
+        }
+        diagSelect.value = diagVal;
+    }
+    
+    if (document.getElementById('editReplaceParts')) {
+        const partsSelect = document.getElementById('editReplaceParts');
+        const partsVal = item.replace_parts || '';
+        if (partsVal && !Array.from(partsSelect.options).some(o => o.value === partsVal)) {
+            partsSelect.add(new Option(partsVal, partsVal));
+        }
+        partsSelect.value = partsVal;
+    }
+
     if (document.getElementById('editRepairStatus')) document.getElementById('editRepairStatus').value = item.repair_status || 'In process';
     if (document.getElementById('editStockStatus')) document.getElementById('editStockStatus').value = item.stock_status || 'IN_STOCK';
     if (document.getElementById('editNotes')) document.getElementById('editNotes').value = item.notes || '';

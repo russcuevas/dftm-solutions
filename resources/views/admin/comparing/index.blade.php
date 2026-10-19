@@ -289,6 +289,7 @@
                 transform: scale(0.95);
                 opacity: 0;
             }
+
             to {
                 transform: scale(1);
                 opacity: 1;
@@ -335,9 +336,7 @@
             $traceabilityIndexUrl = $isEncoder
                 ? route('encoder.traceability.index')
                 : route('admin.traceability.index');
-            $draftsApiUrl = $isEncoder
-                ? route('encoder.comparing.drafts')
-                : route('admin.comparing.drafts');
+            $draftsApiUrl = $isEncoder ? route('encoder.comparing.drafts') : route('admin.comparing.drafts');
         @endphp
 
         <!-- Top Navigation & Action Toolbar -->
@@ -348,7 +347,8 @@
                 </a>
 
                 <!-- Live Auto-Save Draft Status Indicator -->
-                <div id="draftStatusIndicator" class="draft-badge-indicator" title="Kusang nag-sa-save ang iyong batch progress bawat scan">
+                <div id="draftStatusIndicator" class="draft-badge-indicator"
+                    title="Kusang nag-sa-save ang iyong batch progress bawat scan">
                     <i class="bi bi-cloud text-muted" id="draftStatusIcon"></i>
                     <span id="draftStatusText">Auto-save: Ready</span>
                 </div>
@@ -369,7 +369,8 @@
                     style="font-weight: 700; color: #1E3A8A; border-color: #93C5FD; background: #F0F9FF; display: inline-flex; align-items: center; gap: 6px;"
                     title="Tingnan at gamitin ang mga naka-save na drafts">
                     <i class="bi bi-folder2-open" style="color: #2563EB;"></i> Saved Drafts
-                    <span id="draftsCountBadge" class="badge" style="background: #2563EB; color: #FFF; font-size: 0.72rem; padding: 2px 7px; border-radius: 10px;">0</span>
+                    <span id="draftsCountBadge" class="badge"
+                        style="background: #2563EB; color: #FFF; font-size: 0.72rem; padding: 2px 7px; border-radius: 10px;">0</span>
                 </button>
 
                 <!-- New Clean Batch Button -->
@@ -399,7 +400,8 @@
                 <i class="bi bi-folder-check" style="color: #2563EB; font-size: 1.35rem;"></i>
                 <div style="font-size: 0.88rem; color: #1E3A8A;">
                     <strong id="draftAlertTitle">Aktibong Draft:</strong>
-                    <span id="draftAlertDesc">Ipinagpapatuloy ang huling ginagawa. Kusang nag-sa-save bawat scan o pagbabago.</span>
+                    <span id="draftAlertDesc">Ipinagpapatuloy ang huling ginagawa. Kusang nag-sa-save bawat scan o
+                        pagbabago.</span>
                 </div>
             </div>
             <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
@@ -422,6 +424,47 @@
         <div id="scanStatusBanner">
             <div id="scanStatusMsg">Ready to scan...</div>
             <span id="scanStatusTime" style="font-size: 0.75rem; opacity: 0.9;"></span>
+        </div>
+
+        <!-- Quick Bulk Applicator for Technical Diagnostic & Replaced Parts -->
+        <div style="background: #F8FAFC; border: 1.5px solid #CBD5E1; border-radius: 8px; padding: 8px 14px; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+            <div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
+                <!-- Bulk Diagnostic -->
+                <div style="display: flex; align-items: center; gap: 6px;">
+                    <span style="font-weight: 800; font-size: 0.8rem; color: #1E3A8A; white-space: nowrap;">
+                        <i class="bi bi-wrench-adjustable"></i> BULK DIAGNOSTIC:
+                    </span>
+                    <select id="quickBulkDiagnosticSelect" class="form-select form-select-sm" style="font-size: 0.82rem; font-weight: 600; width: 200px; height: 31px; border: 1px solid #94A3B8;">
+                        <option value="">-- Pumili ng Diagnostic --</option>
+                        @foreach (\App\Models\InventoryItem::TECHNICAL_DIAGNOSTICS as $diag)
+                            <option value="{{ $diag }}">{{ $diag }}</option>
+                        @endforeach
+                    </select>
+                    <button type="button" id="btnQuickApplyDiagnostic" class="btn btn-sm btn-primary" style="font-size: 0.78rem; font-weight: 700; height: 31px; padding: 2px 10px;">
+                        Apply to All
+                    </button>
+                </div>
+
+                <!-- Bulk Parts -->
+                <div style="display: flex; align-items: center; gap: 6px;">
+                    <span style="font-weight: 800; font-size: 0.8rem; color: #1E3A8A; white-space: nowrap;">
+                        <i class="bi bi-cpu"></i> BULK REPLACED PARTS:
+                    </span>
+                    <select id="quickBulkPartsSelect" class="form-select form-select-sm" style="font-size: 0.82rem; font-weight: 600; width: 180px; height: 31px; border: 1px solid #94A3B8;">
+                        <option value="">-- Pumili ng Part --</option>
+                        @foreach (\App\Models\InventoryItem::REPLACED_PARTS as $part)
+                            <option value="{{ $part }}">{{ $part }}</option>
+                        @endforeach
+                    </select>
+                    <button type="button" id="btnQuickApplyParts" class="btn btn-sm btn-primary" style="font-size: 0.78rem; font-weight: 700; height: 31px; padding: 2px 10px;">
+                        Apply to All
+                    </button>
+                </div>
+            </div>
+
+            <div style="font-size: 0.76rem; color: #64748B; font-weight: 600;">
+                <i class="bi bi-info-circle"></i> May dropdown din bawat row sa table sa ibaba.
+            </div>
         </div>
 
         <!-- MAIN SPREADSHEET MATRIX (Immediately Visible on Page Load) -->
@@ -510,9 +553,11 @@
                                 DIAGNOSTIC (S)</th>
                             <th rowspan="5" style="width: 130px; text-align: center; vertical-align: middle;">REPLACE
                                 PARTS</th>
-                            <th rowspan="5" style="width: 100px; text-align: center; vertical-align: middle;">STATUS</th>
+                            <th rowspan="5" style="width: 100px; text-align: center; vertical-align: middle;">STATUS
+                            </th>
                             <th colspan="2" style="text-align: center;">TYPE OF EQUIPMENT</th>
-                            <th rowspan="4" style="width: 80px; text-align: center; vertical-align: middle;">BOX NO.</th>
+                            <th rowspan="4" style="width: 80px; text-align: center; vertical-align: middle;">BOX NO.
+                            </th>
                         </tr>
 
                         <!-- Sub-header Level 2: Batch # -->
@@ -622,25 +667,32 @@
     <!-- Saved Drafts Manager Modal -->
     <div class="lookup-modal" id="savedDraftsModal">
         <div class="lookup-modal-content">
-            <div style="background: #1E3A8A; color: #FFFFFF; padding: 14px 20px; display: flex; align-items: center; justify-content: space-between;">
+            <div
+                style="background: #1E3A8A; color: #FFFFFF; padding: 14px 20px; display: flex; align-items: center; justify-content: space-between;">
                 <div style="font-weight: 700; font-size: 1.05rem; display: flex; align-items: center; gap: 8px;">
                     <i class="bi bi-folder2-open" style="color: #60A5FA;"></i> Mga Naka-save na Batch Drafts
                 </div>
-                <button type="button" id="btnCloseDraftsModal" style="background: transparent; border: none; color: #FFFFFF; font-size: 1.25rem; cursor: pointer; padding: 0;">
+                <button type="button" id="btnCloseDraftsModal"
+                    style="background: transparent; border: none; color: #FFFFFF; font-size: 1.25rem; cursor: pointer; padding: 0;">
                     <i class="bi bi-x-lg"></i>
                 </button>
             </div>
 
-            <div style="padding: 14px 20px; background: #F8FAFC; border-bottom: 1px solid #E2E8F0; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+            <div
+                style="padding: 14px 20px; background: #F8FAFC; border-bottom: 1px solid #E2E8F0; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
                 <div style="position: relative; flex: 1; min-width: 240px;">
                     <i class="bi bi-search" style="position: absolute; left: 10px; top: 9px; color: #94A3B8;"></i>
-                    <input type="text" id="draftSearchInput" class="excel-cell-input" style="padding-left: 32px; border: 1px solid #CBD5E1; border-radius: 6px; background: #FFF; height: 36px; font-weight: 600;" placeholder="Mag-search ng draft (Company, Batch #, o Pangalan)...">
+                    <input type="text" id="draftSearchInput" class="excel-cell-input"
+                        style="padding-left: 32px; border: 1px solid #CBD5E1; border-radius: 6px; background: #FFF; height: 36px; font-weight: 600;"
+                        placeholder="Mag-search ng draft (Company, Batch #, o Pangalan)...">
                 </div>
                 <div style="display: flex; align-items: center; gap: 8px;">
-                    <button type="button" id="btnModalNewBatch" class="btn btn-outline btn-sm" style="font-weight: 700; background: #FFF;">
+                    <button type="button" id="btnModalNewBatch" class="btn btn-outline btn-sm"
+                        style="font-weight: 700; background: #FFF;">
                         <i class="bi bi-plus-circle"></i> Bagong Batch
                     </button>
-                    <button type="button" id="btnModalSaveCurrentAsNew" class="btn btn-sm btn-primary" style="font-weight: 700; background: #2563EB;">
+                    <button type="button" id="btnModalSaveCurrentAsNew" class="btn btn-sm btn-primary"
+                        style="font-weight: 700; background: #2563EB;">
                         <i class="bi bi-plus-lg"></i> I-save bilang Bagong Draft
                     </button>
                 </div>
@@ -652,8 +704,10 @@
                 </div>
             </div>
 
-            <div style="background: #F8FAFC; border-top: 1px solid #E2E8F0; padding: 12px 20px; display: flex; align-items: center; justify-content: space-between;">
-                <span id="draftsTotalSummary" style="font-size: 0.85rem; font-weight: 600; color: #64748B;">0 drafts</span>
+            <div
+                style="background: #F8FAFC; border-top: 1px solid #E2E8F0; padding: 12px 20px; display: flex; align-items: center; justify-content: space-between;">
+                <span id="draftsTotalSummary" style="font-size: 0.85rem; font-weight: 600; color: #64748B;">0
+                    drafts</span>
                 <button type="button" class="btn btn-outline btn-sm" id="btnCloseDraftsFooter">Isara (Close)</button>
             </div>
         </div>
@@ -669,6 +723,62 @@
 
                 // Table Rows Model: array of { id, item_no, serial_number, mac_address, box_no, brand, model, technical_diagnostic, replace_parts, repair_status, is_matched }
                 let tableRows = [];
+
+                // Client-specified options for dropdowns
+                const TECHNICAL_DIAGNOSTIC_OPTIONS = @json(\App\Models\InventoryItem::TECHNICAL_DIAGNOSTICS);
+                const REPLACED_PARTS_OPTIONS = @json(\App\Models\InventoryItem::REPLACED_PARTS);
+
+                function renderDiagnosticSelect(currentVal, rowKey, idx) {
+                    const val = (currentVal || '').trim();
+                    let hasMatch = false;
+                    let optionsHtml = `<option value="">-- Select Diagnostic --</option>`;
+                    
+                    if (val && !TECHNICAL_DIAGNOSTIC_OPTIONS.includes(val)) {
+                        optionsHtml += `<option value="${escapeHtml(val)}" selected>${escapeHtml(val)}</option>`;
+                        hasMatch = true;
+                    }
+                    
+                    TECHNICAL_DIAGNOSTIC_OPTIONS.forEach(opt => {
+                        const isSel = (!hasMatch && val.toUpperCase() === opt.toUpperCase()) ? 'selected' : '';
+                        if (isSel) hasMatch = true;
+                        optionsHtml += `<option value="${escapeHtml(opt)}" ${isSel}>${escapeHtml(opt)}</option>`;
+                    });
+
+                    return `
+                        <select name="row_diagnostic[${rowKey}]" 
+                               class="excel-cell-select row-diag" 
+                               data-idx="${idx}" 
+                               style="font-size: 0.82rem; padding: 2px 4px; font-weight: 600;">
+                            ${optionsHtml}
+                        </select>
+                    `;
+                }
+
+                function renderPartsSelect(currentVal, rowKey, idx) {
+                    const val = (currentVal || '').trim();
+                    let hasMatch = false;
+                    let optionsHtml = `<option value="">-- Select Parts --</option>`;
+
+                    if (val && !REPLACED_PARTS_OPTIONS.includes(val)) {
+                        optionsHtml += `<option value="${escapeHtml(val)}" selected>${escapeHtml(val)}</option>`;
+                        hasMatch = true;
+                    }
+
+                    REPLACED_PARTS_OPTIONS.forEach(opt => {
+                        const isSel = (!hasMatch && val.toUpperCase() === opt.toUpperCase()) ? 'selected' : '';
+                        if (isSel) hasMatch = true;
+                        optionsHtml += `<option value="${escapeHtml(opt)}" ${isSel}>${escapeHtml(opt)}</option>`;
+                    });
+
+                    return `
+                        <select name="row_parts[${rowKey}]" 
+                               class="excel-cell-select row-parts" 
+                               data-idx="${idx}" 
+                               style="font-size: 0.82rem; padding: 2px 4px; font-weight: 600;">
+                            ${optionsHtml}
+                        </select>
+                    `;
+                }
 
                 const headerCompanySelect = document.getElementById('headerCompanySelect');
                 const headerBrandSelect = document.getElementById('headerBrandSelect');
@@ -784,7 +894,8 @@
                         el.textContent = count;
                     });
                     if (draftsTotalSummary) {
-                        draftsTotalSummary.textContent = `${count} ${count === 1 ? 'naka-save na draft sa database' : 'naka-save na mga draft sa database'}`;
+                        draftsTotalSummary.textContent =
+                            `${count} ${count === 1 ? 'naka-save na draft sa database' : 'naka-save na mga draft sa database'}`;
                     }
                 }
 
@@ -831,7 +942,8 @@
                     const dateVal = inputDateDelivered ? inputDateDelivered.value : '';
                     const statusVal = headerBatchStatus ? headerBatchStatus.value : 'GOOD';
 
-                    const rowsWithData = tableRows.filter(r => (r.serial_number && r.serial_number.trim() !== '') || (r.mac_address && r.mac_address.trim() !== '') || r.id);
+                    const rowsWithData = tableRows.filter(r => (r.serial_number && r.serial_number.trim() !== '') ||
+                        (r.mac_address && r.mac_address.trim() !== '') || r.id);
                     const verifiedUnits = tableRows.filter(r => r.is_matched && r.id);
 
                     // If completely blank and silent auto-save, skip saving
@@ -840,7 +952,11 @@
                     }
 
                     const now = new Date();
-                    const timeOnly = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                    const timeOnly = now.toLocaleTimeString([], {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        second: '2-digit'
+                    });
 
                     let draftTitle = (customTitle || '').trim();
                     if (!draftTitle) {
@@ -848,7 +964,8 @@
                         if (!asNew && existingDraft && existingDraft.title) {
                             draftTitle = existingDraft.title;
                         } else {
-                            draftTitle = (companyVal ? companyVal + ' - ' : '') + (batchNoVal ? batchNoVal : ('Draft (' + timeOnly + ')'));
+                            draftTitle = (companyVal ? companyVal + ' - ' : '') + (batchNoVal ? batchNoVal : (
+                                'Draft (' + timeOnly + ')'));
                         }
                     }
 
@@ -868,7 +985,8 @@
 
                     // Local fast cache save
                     try {
-                        localStorage.setItem('dftm_comparing_last_working_sheet_' + USER_STORAGE_SUFFIX, JSON.stringify(payload));
+                        localStorage.setItem('dftm_comparing_last_working_sheet_' + USER_STORAGE_SUFFIX, JSON
+                            .stringify(payload));
                     } catch (e) {}
 
                     try {
@@ -893,19 +1011,23 @@
                             if (draftStatusIndicator) {
                                 draftStatusIndicator.classList.remove('saving');
                                 draftStatusIndicator.classList.add('saved');
-                                if (draftStatusIcon) draftStatusIcon.className = 'bi bi-database-check text-success';
+                                if (draftStatusIcon) draftStatusIcon.className =
+                                'bi bi-database-check text-success';
                                 if (draftStatusText) {
-                                    draftStatusText.textContent = `DB Saved: ${timeOnly} (${verifiedUnits.length} verified)`;
+                                    draftStatusText.textContent =
+                                        `DB Saved: ${timeOnly} (${verifiedUnits.length} verified)`;
                                 }
                             }
 
                             if (draftAlertBanner) {
                                 draftAlertBanner.style.display = 'flex';
                                 if (draftAlertTitle) {
-                                    draftAlertTitle.textContent = `Aktibong Database Draft: ${data.title || draftTitle}`;
+                                    draftAlertTitle.textContent =
+                                        `Aktibong Database Draft: ${data.title || draftTitle}`;
                                 }
                                 if (draftAlertDesc) {
-                                    draftAlertDesc.textContent = `${verifiedUnits.length} verified units para sa ${companyVal || 'kumpanya'}. Naka-sync sa database noong ${timeOnly}.`;
+                                    draftAlertDesc.textContent =
+                                        `${verifiedUnits.length} verified units para sa ${companyVal || 'kumpanya'}. Naka-sync sa database noong ${timeOnly}.`;
                                 }
                             }
 
@@ -938,7 +1060,9 @@
                             if (draftStatusText) draftStatusText.textContent = 'Auto-saved locally (Offline)';
                         }
                         if (!silent) {
-                            Swal.fire('Offline Save', 'Nai-save ang draft sa local browser cache, ngunit may aberya sa koneksyon sa database.', 'warning');
+                            Swal.fire('Offline Save',
+                                'Nai-save ang draft sa local browser cache, ngunit may aberya sa koneksyon sa database.',
+                                'warning');
                         }
                         return false;
                     }
@@ -968,7 +1092,8 @@
 
                 // Prompt user to manually save draft or name a new draft
                 function promptManualSaveDraft(forceNew = false) {
-                    const activeDraft = currentDraftId ? cachedDraftsList.find(d => String(d.id) === String(currentDraftId)) : null;
+                    const activeDraft = currentDraftId ? cachedDraftsList.find(d => String(d.id) === String(
+                        currentDraftId)) : null;
                     const companyVal = headerCompanySelect ? headerCompanySelect.value : '';
                     const batchNoVal = inputBatchNo ? inputBatchNo.value.trim() : '';
 
@@ -976,11 +1101,17 @@
                     if (!forceNew && activeDraft && activeDraft.title) {
                         defaultName = activeDraft.title;
                     } else {
-                        defaultName = (companyVal ? companyVal + ' - ' : '') + (batchNoVal || ('Batch Draft (' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + ')'));
+                        defaultName = (companyVal ? companyVal + ' - ' : '') + (batchNoVal || ('Batch Draft (' +
+                            new Date().toLocaleTimeString([], {
+                                hour: '2-digit',
+                                minute: '2-digit'
+                            }) + ')'));
                     }
 
                     Swal.fire({
-                        title: forceNew ? '<i class="bi bi-database-add text-primary"></i> I-save bilang Bagong Database Draft' : '<i class="bi bi-database-check text-primary"></i> I-save sa Database',
+                        title: forceNew ?
+                            '<i class="bi bi-database-add text-primary"></i> I-save bilang Bagong Database Draft' :
+                            '<i class="bi bi-database-check text-primary"></i> I-save sa Database',
                         text: 'Maglagay ng pangalan o title para sa draft na ito upang madali mo itong makilala sa anumang device:',
                         input: 'text',
                         inputValue: defaultName,
@@ -1016,7 +1147,9 @@
                     const search = (filterText || '').toLowerCase().trim();
                     const filtered = drafts.filter(d => {
                         if (!search) return true;
-                        const corpus = `${d.title || ''} ${d.company_name || ''} ${d.batch_no || ''} ${d.brand || ''} ${d.model || ''} ${d.created_by || ''}`.toLowerCase();
+                        const corpus =
+                            `${d.title || ''} ${d.company_name || ''} ${d.batch_no || ''} ${d.brand || ''} ${d.model || ''} ${d.created_by || ''}`
+                            .toLowerCase();
                         return corpus.includes(search);
                     });
 
@@ -1060,10 +1193,10 @@
                                             ${escapeHtml(d.title || 'Untitled Draft')}
                                         </h5>
                                         ${isActive ? `
-                                            <span class="badge" style="background: #10B981; color: #FFFFFF; font-size: 0.72rem; padding: 3px 8px; border-radius: 4px; font-weight: 700;">
-                                                <i class="bi bi-check-circle-fill"></i> Kasalukuyang Aktibo
-                                            </span>
-                                        ` : ''}
+                                                    <span class="badge" style="background: #10B981; color: #FFFFFF; font-size: 0.72rem; padding: 3px 8px; border-radius: 4px; font-weight: 700;">
+                                                        <i class="bi bi-check-circle-fill"></i> Kasalukuyang Aktibo
+                                                    </span>
+                                                ` : ''}
                                         <span class="badge" style="background: #E0E7FF; color: #3730A3; font-size: 0.72rem; padding: 3px 8px; border-radius: 4px; font-weight: 600;">
                                             <i class="bi bi-person-fill"></i> ${escapeHtml(creator)}
                                         </span>
@@ -1210,7 +1343,9 @@
                                         'X-CSRF-TOKEN': CSRF_TOKEN,
                                         'X-Requested-With': 'XMLHttpRequest'
                                     },
-                                    body: JSON.stringify({ title: newTitle })
+                                    body: JSON.stringify({
+                                        title: newTitle
+                                    })
                                 });
                                 const data = await res.json();
                                 if (data && data.success) {
@@ -1219,10 +1354,13 @@
                                         draftAlertTitle.textContent = `Aktibong Draft: ${newTitle}`;
                                     }
                                     renderDraftsList(draftSearchInput ? draftSearchInput.value : '');
-                                    showStatus(`Pangalan ng draft na-update sa database: "${escapeHtml(newTitle)}"`, 'success');
+                                    showStatus(
+                                        `Pangalan ng draft na-update sa database: "${escapeHtml(newTitle)}"`,
+                                        'success');
                                 }
                             } catch (e) {
-                                Swal.fire('Error', 'Hindi na-update ang pangalan sa database.', 'error');
+                                Swal.fire('Error', 'Hindi na-update ang pangalan sa database.',
+                                'error');
                             }
                         }
                     });
@@ -1256,7 +1394,8 @@
                                 });
                                 const data = await res.json();
                                 if (data && data.success) {
-                                    cachedDraftsList = cachedDraftsList.filter(d => String(d.id) !== String(draftId));
+                                    cachedDraftsList = cachedDraftsList.filter(d => String(d.id) !== String(
+                                        draftId));
                                     updateDraftBadges(cachedDraftsList.length);
 
                                     // If deleted draft was active, clear pointer
@@ -1267,13 +1406,16 @@
                                         if (draftAlertBanner) draftAlertBanner.style.display = 'none';
                                         if (draftStatusIndicator) {
                                             draftStatusIndicator.classList.remove('saving', 'saved');
-                                            if (draftStatusIcon) draftStatusIcon.className = 'bi bi-database text-muted';
-                                            if (draftStatusText) draftStatusText.textContent = 'Auto-save: Ready';
+                                            if (draftStatusIcon) draftStatusIcon.className =
+                                                'bi bi-database text-muted';
+                                            if (draftStatusText) draftStatusText.textContent =
+                                                'Auto-save: Ready';
                                         }
                                     }
 
                                     renderDraftsList(draftSearchInput ? draftSearchInput.value : '');
-                                    showStatus(`Draft "${escapeHtml(titleStr)}" nabura sa database.`, 'duplicate');
+                                    showStatus(`Draft "${escapeHtml(titleStr)}" nabura sa database.`,
+                                        'duplicate');
                                 }
                             } catch (e) {
                                 Swal.fire('Error', 'Hindi nabura ang draft sa database.', 'error');
@@ -1286,7 +1428,8 @@
                 function startNewBatch(confirmBefore = true) {
                     const doNewBatch = async () => {
                         // Silently save current draft before clearing if it has data
-                        const hasData = tableRows.some(r => (r.serial_number && r.serial_number.trim() !== '') || (r.mac_address && r.mac_address.trim() !== '') || r.id);
+                        const hasData = tableRows.some(r => (r.serial_number && r.serial_number.trim() !==
+                            '') || (r.mac_address && r.mac_address.trim() !== '') || r.id);
                         if (hasData && currentDraftId) {
                             await saveDraft(true, false);
                         }
@@ -1303,11 +1446,13 @@
                         loadedPoolUnits = [];
                         currentBrandsData = [];
                         if (headerBrandSelect) {
-                            headerBrandSelect.innerHTML = '<option value="">-- Select Company First --</option>';
+                            headerBrandSelect.innerHTML =
+                            '<option value="">-- Select Company First --</option>';
                             headerBrandSelect.disabled = true;
                         }
                         if (headerModelSelect) {
-                            headerModelSelect.innerHTML = '<option value="">-- Select Company First --</option>';
+                            headerModelSelect.innerHTML =
+                            '<option value="">-- Select Company First --</option>';
                             headerModelSelect.disabled = true;
                         }
                         if (inputBatchNo) inputBatchNo.value = '';
@@ -1330,7 +1475,9 @@
 
                         closeDraftsModal();
                         focusCell(0, 'serial');
-                        showStatus('<i class="bi bi-stars"></i> Nakahanda na ang bagong spreadsheet. Ang iyong mga drafts ay ligtas sa Database.', 'success');
+                        showStatus(
+                            '<i class="bi bi-stars"></i> Nakahanda na ang bagong spreadsheet. Ang iyong mga drafts ay ligtas sa Database.',
+                            'success');
                     };
 
                     if (!confirmBefore) {
@@ -1339,7 +1486,8 @@
                     }
 
                     const verifiedCount = tableRows.filter(r => r.is_matched && r.id).length;
-                    const hasData = verifiedCount > 0 || tableRows.some(r => (r.serial_number && r.serial_number.trim() !== '') || (r.mac_address && r.mac_address.trim() !== ''));
+                    const hasData = verifiedCount > 0 || tableRows.some(r => (r.serial_number && r.serial_number
+                    .trim() !== '') || (r.mac_address && r.mac_address.trim() !== ''));
 
                     if (!hasData) {
                         doNewBatch();
@@ -1418,7 +1566,9 @@
                         if (typeof draft.sound_enabled === 'boolean') {
                             soundEnabled = draft.sound_enabled;
                             if (btnAudioToggle) {
-                                btnAudioToggle.innerHTML = soundEnabled ? '<i class="bi bi-volume-up-fill"></i> Sound: ON' : '<i class="bi bi-volume-mute-fill"></i> Sound: OFF';
+                                btnAudioToggle.innerHTML = soundEnabled ?
+                                    '<i class="bi bi-volume-up-fill"></i> Sound: ON' :
+                                    '<i class="bi bi-volume-mute-fill"></i> Sound: OFF';
                             }
                         }
 
@@ -1449,14 +1599,18 @@
                         if (draftAlertBanner) {
                             draftAlertBanner.style.display = 'flex';
                             if (draftAlertTitle) {
-                                draftAlertTitle.textContent = `Aktibong Draft: ${draft.title || draft.company_name || 'Draft'}`;
+                                draftAlertTitle.textContent =
+                                    `Aktibong Draft: ${draft.title || draft.company_name || 'Draft'}`;
                             }
                             if (draftAlertDesc) {
-                                draftAlertDesc.textContent = `${verifiedCount} verified units para sa ${draft.company_name || 'kumpanya'}. Huling binago: ${draft.updated_at_formatted || 'kamakailan'}.`;
+                                draftAlertDesc.textContent =
+                                    `${verifiedCount} verified units para sa ${draft.company_name || 'kumpanya'}. Huling binago: ${draft.updated_at_formatted || 'kamakailan'}.`;
                             }
                         }
 
-                        showStatus(`<i class="bi bi-check-circle-fill"></i> Naka-load na ang draft: <strong>${escapeHtml(draft.title || draft.company_name || 'Draft')}</strong> mula sa database! Maaari nang ipagpatuloy ang pag-scan.`, 'success');
+                        showStatus(
+                            `<i class="bi bi-check-circle-fill"></i> Naka-load na ang draft: <strong>${escapeHtml(draft.title || draft.company_name || 'Draft')}</strong> mula sa database! Maaari nang ipagpatuloy ang pag-scan.`,
+                            'success');
 
                         // 6. Focus on next empty cell or missing MAC cell
                         let nextFocusIdx = tableRows.findIndex(r => !r.serial_number);
@@ -1655,7 +1809,7 @@
                         console.error(err);
                         showStatus('Failed to load company units.', 'error');
                     }
-                }                // Add blank rows (Default starts with 1 row)
+                } // Add blank rows (Default starts with 1 row)
                 function addBlankRows(qty = 1) {
                     const startIdx = tableRows.length;
                     const activeBrand = headerBrandSelect ? headerBrandSelect.value : '';
@@ -1675,8 +1829,8 @@
                             box_no: autoBox,
                             brand: activeBrand,
                             model: activeModel,
-                            technical_diagnostic: 'Test and Clean',
-                            replace_parts: '',
+                            technical_diagnostic: '',
+                            replace_parts: 'N/A',
                             repair_status: defaultStatus,
                             is_matched: false
                         });
@@ -1707,18 +1861,12 @@
 
                             <!-- TECHNICAL DIAGNOSTIC (S) -->
                             <td>
-                                <input type="text" name="row_diagnostic[${r.id || 'row_' + idx}]" 
-                                       value="${escapeHtml(r.technical_diagnostic || 'Test and Clean')}" 
-                                       class="excel-cell-input row-diag" 
-                                       data-idx="${idx}" placeholder="Diagnostic">
+                                ${renderDiagnosticSelect(r.technical_diagnostic, r.id || 'row_' + idx, idx)}
                             </td>
 
                             <!-- REPLACE PARTS -->
                             <td>
-                                <input type="text" name="row_parts[${r.id || 'row_' + idx}]" 
-                                       value="${escapeHtml(r.replace_parts || '')}" 
-                                       class="excel-cell-input row-parts" 
-                                       data-idx="${idx}" placeholder="Replace Parts">
+                                ${renderPartsSelect(r.replace_parts, r.id || 'row_' + idx, idx)}
                             </td>
 
                             <!-- STATUS -->
@@ -1767,10 +1915,10 @@
                                            data-idx="${idx}" 
                                            style="text-align: center; font-weight: 800; color: #0284C7; text-transform: uppercase; width: 50px;">
                                     ${tableRows.length > 1 ? `
-                                                                <button type="button" class="btn btn-outline btn-icon btn-sm btn-del-row" data-idx="${idx}" style="color: #DC2626; border: none; padding: 2px 4px; font-size: 0.8rem;" title="Remove Row">
-                                                                    <i class="bi bi-x-circle"></i>
-                                                                </button>
-                                                            ` : ''}
+                                                                        <button type="button" class="btn btn-outline btn-icon btn-sm btn-del-row" data-idx="${idx}" style="color: #DC2626; border: none; padding: 2px 4px; font-size: 0.8rem;" title="Remove Row">
+                                                                            <i class="bi bi-x-circle"></i>
+                                                                        </button>
+                                                                    ` : ''}
                                 </div>
                             </td>
                         </tr>
@@ -1817,19 +1965,19 @@
                     });
 
                     // Other cell inputs
-                    matrixTbody.querySelectorAll('.row-diag').forEach(inp => {
-                        inp.addEventListener('input', function() {
+                    matrixTbody.querySelectorAll('.row-diag').forEach(sel => {
+                        sel.addEventListener('change', function() {
                             tableRows[parseInt(this.getAttribute('data-idx'))].technical_diagnostic =
                                 this.value;
-                            triggerAutoSave(false);
+                            triggerAutoSave(true);
                         });
                     });
 
-                    matrixTbody.querySelectorAll('.row-parts').forEach(inp => {
-                        inp.addEventListener('input', function() {
+                    matrixTbody.querySelectorAll('.row-parts').forEach(sel => {
+                        sel.addEventListener('change', function() {
                             tableRows[parseInt(this.getAttribute('data-idx'))].replace_parts = this
                                 .value;
-                            triggerAutoSave(false);
+                            triggerAutoSave(true);
                         });
                     });
 
@@ -2005,9 +2153,9 @@
                                 tableRows[rowIndex].brand = matchedByMac.brand || headerBrandSelect.value;
                                 tableRows[rowIndex].model = matchedByMac.model || headerModelSelect.value;
                                 tableRows[rowIndex].technical_diagnostic = tableRows[rowIndex]
-                                    .technical_diagnostic || matchedByMac.technical_diagnostic || 'Test and Clean';
+                                    .technical_diagnostic || matchedByMac.technical_diagnostic || '';
                                 tableRows[rowIndex].replace_parts = tableRows[rowIndex].replace_parts ||
-                                    matchedByMac.replace_parts || '';
+                                    matchedByMac.replace_parts || 'N/A';
                                 tableRows[rowIndex].repair_status = 'GOOD';
                                 tableRows[rowIndex].box_no = tableRows[rowIndex].box_no || autoBoxNo;
                                 tableRows[rowIndex].is_matched = true;
@@ -2088,9 +2236,9 @@
                         tableRows[rowIndex].brand = matchedPoolItem.brand || headerBrandSelect.value;
                         tableRows[rowIndex].model = matchedPoolItem.model || headerModelSelect.value;
                         tableRows[rowIndex].technical_diagnostic = tableRows[rowIndex].technical_diagnostic ||
-                            matchedPoolItem.technical_diagnostic || 'Test and Clean';
+                            matchedPoolItem.technical_diagnostic || '';
                         tableRows[rowIndex].replace_parts = tableRows[rowIndex].replace_parts || matchedPoolItem
-                            .replace_parts || '';
+                            .replace_parts || 'N/A';
                         tableRows[rowIndex].repair_status = 'GOOD';
                         tableRows[rowIndex].box_no = tableRows[rowIndex].box_no || autoBoxNo;
                         tableRows[rowIndex].is_matched = true;
@@ -2167,9 +2315,9 @@
                             tableRows[rowIndex].brand = item.brand || headerBrandSelect.value;
                             tableRows[rowIndex].model = item.model || headerModelSelect.value;
                             tableRows[rowIndex].technical_diagnostic = tableRows[rowIndex].technical_diagnostic ||
-                                item.technical_diagnostic || 'Test and Clean';
+                                item.technical_diagnostic || '';
                             tableRows[rowIndex].replace_parts = tableRows[rowIndex].replace_parts || item
-                                .replace_parts || '';
+                                .replace_parts || 'N/A';
                             tableRows[rowIndex].repair_status = 'GOOD';
                             tableRows[rowIndex].box_no = tableRows[rowIndex].box_no || autoBoxNo;
                             tableRows[rowIndex].is_matched = true;
@@ -2267,7 +2415,8 @@
                 if (headerCompanySelect) {
                     headerCompanySelect.addEventListener('change', function() {
                         const comp = this.value;
-                        const currentVerified = tableRows.filter(r => (r.serial_number && r.serial_number.trim() !== '') || r.id).length;
+                        const currentVerified = tableRows.filter(r => (r.serial_number && r.serial_number
+                        .trim() !== '') || r.id).length;
 
                         // Confirm before switching if user already has scanned units
                         if (currentCompany && comp !== currentCompany && currentVerified > 0) {
@@ -2296,9 +2445,11 @@
                                         formCompanyInput.value = '';
                                         loadedPoolUnits = [];
                                         currentBrandsData = [];
-                                        headerBrandSelect.innerHTML = '<option value="">-- Select Company First --</option>';
+                                        headerBrandSelect.innerHTML =
+                                            '<option value="">-- Select Company First --</option>';
                                         headerBrandSelect.disabled = true;
-                                        headerModelSelect.innerHTML = '<option value="">-- Select Company First --</option>';
+                                        headerModelSelect.innerHTML =
+                                            '<option value="">-- Select Company First --</option>';
                                         headerModelSelect.disabled = true;
                                         updateCounters();
                                     }
@@ -2442,6 +2593,56 @@
                     });
                 }
 
+                // Quick Bulk Applicators for Diagnostic & Parts
+                const quickBulkDiagnosticSelect = document.getElementById('quickBulkDiagnosticSelect');
+                const btnQuickApplyDiagnostic = document.getElementById('btnQuickApplyDiagnostic');
+                const quickBulkPartsSelect = document.getElementById('quickBulkPartsSelect');
+                const btnQuickApplyParts = document.getElementById('btnQuickApplyParts');
+
+                if (btnQuickApplyDiagnostic && quickBulkDiagnosticSelect) {
+                    btnQuickApplyDiagnostic.addEventListener('click', function() {
+                        const val = quickBulkDiagnosticSelect.value;
+                        if (!val) {
+                            Swal.fire({
+                                icon: 'warning',
+                                title: 'Pumili muna ng Diagnostic',
+                                text: 'Pakipili ang Technical Diagnostic na nais i-apply sa lahat ng rows.',
+                                confirmButtonColor: '#2563EB'
+                            });
+                            return;
+                        }
+                        if (tableRows.length === 0) return;
+                        tableRows.forEach(r => {
+                            r.technical_diagnostic = val;
+                        });
+                        renderTable();
+                        triggerAutoSave(true);
+                        showStatus(`<i class="bi bi-check-circle-fill"></i> Na-apply ang diagnostic na "<strong>${escapeHtml(val)}</strong>" sa lahat ng ${tableRows.length} rows!`, 'success');
+                    });
+                }
+
+                if (btnQuickApplyParts && quickBulkPartsSelect) {
+                    btnQuickApplyParts.addEventListener('click', function() {
+                        const val = quickBulkPartsSelect.value;
+                        if (!val) {
+                            Swal.fire({
+                                icon: 'warning',
+                                title: 'Pumili muna ng Replaced Part',
+                                text: 'Pakipili ang Replaced Part na nais i-apply sa lahat ng rows.',
+                                confirmButtonColor: '#2563EB'
+                            });
+                            return;
+                        }
+                        if (tableRows.length === 0) return;
+                        tableRows.forEach(r => {
+                            r.replace_parts = val;
+                        });
+                        renderTable();
+                        triggerAutoSave(true);
+                        showStatus(`<i class="bi bi-check-circle-fill"></i> Na-apply ang replaced part na "<strong>${escapeHtml(val)}</strong>" sa lahat ng ${tableRows.length} rows!`, 'success');
+                    });
+                }
+
                 if (btnTopSaveBatch) {
                     btnTopSaveBatch.addEventListener('click', function() {
                         storeBatchForm.requestSubmit();
@@ -2493,9 +2694,11 @@
                                     const submittedDraftId = currentDraftId;
                                     currentDraftId = null;
                                     localStorage.removeItem(ACTIVE_DRAFT_KEY);
-                                    cachedDraftsList = cachedDraftsList.filter(d => String(d.id) !== String(submittedDraftId));
+                                    cachedDraftsList = cachedDraftsList.filter(d => String(d.id) !==
+                                        String(submittedDraftId));
                                     try {
-                                        localStorage.setItem(DRAFTS_LIST_KEY, JSON.stringify(cachedDraftsList));
+                                        localStorage.setItem(DRAFTS_LIST_KEY, JSON.stringify(
+                                            cachedDraftsList));
                                     } catch (e) {}
                                 }
 
@@ -2522,8 +2725,10 @@
                         const oldSingleDraft = localStorage.getItem(OLD_SINGLE_DRAFT_KEY);
                         if (oldSingleDraft) {
                             const parsed = JSON.parse(oldSingleDraft);
-                            if (parsed && (parsed.company_name || (Array.isArray(parsed.rows) && parsed.rows.length > 0))) {
-                                parsed.title = (parsed.company_name ? parsed.company_name + ' - ' : '') + (parsed.batch_no || 'Migrated Local Draft');
+                            if (parsed && (parsed.company_name || (Array.isArray(parsed.rows) && parsed.rows
+                                    .length > 0))) {
+                                parsed.title = (parsed.company_name ? parsed.company_name + ' - ' : '') + (parsed
+                                    .batch_no || 'Migrated Local Draft');
                                 parsed.as_new = true;
                                 await fetch(DRAFTS_API_URL, {
                                     method: 'POST',

@@ -7,7 +7,36 @@ use Illuminate\Database\Eloquent\Model;
 
 class InventoryItem extends Model
 {
-    use HasFactory;
+    public const TECHNICAL_DIAGNOSTICS = [
+        'NO POWER',
+        'INTERMITTENT POWER',
+        'NO WIFI DETECTED',
+        'DEFECTIVE LED LIGHT',
+        'DEFECTIVE LAN PORT',
+        'LOS PON PROBLEM',
+        'BLINKING PON PROBLEM',
+        'CANNOT RESET',
+        'BROKEN WIFI ANTENNA',
+        'DISCOLORATION CASING',
+        'CORRODED BOARD',
+        'RUSTY BOARD',
+        'CPU PROBLEM/NO POWER',
+    ];
+
+    public const REPLACED_PARTS = [
+        'SMD CAPACITOR',
+        'SMD RESISTOR',
+        'ON/OFF SWITCH',
+        'PUSH BUTTON',
+        'LED LIGHT',
+        'LAN PORT',
+        'WIFI IC',
+        'POWER IC',
+        'LASER DIODE',
+        'ANTENNA',
+        'CASING',
+        'N/A',
+    ];
 
     protected $fillable = [
         'transmittal_id',
