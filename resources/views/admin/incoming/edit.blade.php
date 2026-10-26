@@ -222,6 +222,13 @@
                                 <span>Aktibong Folder: <strong id="activeModelLabel">{{ $transmittal->model ?: 'Walang Model' }}</strong></span>
                             </div>
                         </div>
+
+                        <div>
+                            <button type="button" id="btnAddModelFolder" class="btn btn-primary btn-sm" style="font-weight: 700; display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 6px; box-shadow: 0 2px 6px rgba(0,32,91,0.25);">
+                                <i class="bi bi-folder-plus" style="font-size: 1rem;"></i>
+                                <span>+ Add Folder</span>
+                            </button>
+                        </div>
                     </div>
 
                     <!-- Dynamic Folder Tabs Nav -->
@@ -231,7 +238,7 @@
 
                     <div style="margin-top: 10px; font-size: 0.75rem; color: #64748B; display: flex; align-items: center; gap: 6px;">
                         <i class="bi bi-info-circle-fill" style="color: #0284C7;"></i>
-                        <span>I-click ang model folder para makita o maibaril ang mga units para sa model na iyon.</span>
+                        <span>I-click ang model folder para makita o maibaril ang mga units para sa model na iyon. Pindutin ang <strong>+ Add Folder</strong> para magdagdag ng panibagong Model Folder.</span>
                     </div>
                 </div>
 
@@ -548,6 +555,40 @@
                     modelFoldersNav.appendChild(tab);
                 });
 
+                // Dashed "+ Add Folder" button tab inside nav
+                const addTabBtn = document.createElement('button');
+                addTabBtn.type = 'button';
+                addTabBtn.className = 'btn-add-model-folder-tab';
+                addTabBtn.title = 'Magdagdag ng panibagong Model Folder';
+                addTabBtn.style.cssText = `
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 6px;
+                    padding: 7px 14px;
+                    background: #F8FAFC;
+                    color: var(--dftm-navy);
+                    border: 1.5px dashed #3B82F6;
+                    border-radius: 8px;
+                    font-size: 0.82rem;
+                    font-weight: 700;
+                    cursor: pointer;
+                    transition: all 0.2s ease;
+                `;
+                addTabBtn.innerHTML = `
+                    <i class="bi bi-folder-plus" style="color: #2563EB; font-size: 1rem;"></i>
+                    <span>+ Add Folder</span>
+                `;
+                addTabBtn.addEventListener('mouseenter', () => {
+                    addTabBtn.style.background = '#EFF6FF';
+                    addTabBtn.style.borderColor = '#1D4ED8';
+                });
+                addTabBtn.addEventListener('mouseleave', () => {
+                    addTabBtn.style.background = '#F8FAFC';
+                    addTabBtn.style.borderColor = '#3B82F6';
+                });
+                addTabBtn.addEventListener('click', promptAddNewModelFolder);
+                modelFoldersNav.appendChild(addTabBtn);
+
                 // Update active badge display
                 if (activeModelLabel) {
                     const count = counts[activeModelFilter] || 0;
@@ -614,6 +655,35 @@
                     </span>
                 `;
 
+                // If empty folder and there are other folders, show delete button
+                if (count === 0 && knownModels.size > 1) {
+                    const delFolderBtn = document.createElement('span');
+                    delFolderBtn.title = `Tanggalin ang folder na "${modelKey}" (walang laman)`;
+                    delFolderBtn.style.cssText = `
+                        margin-left: 6px;
+                        color: ${isActive ? 'rgba(255,255,255,0.75)' : '#94A3B8'};
+                        cursor: pointer;
+                        padding: 1px 4px;
+                        border-radius: 4px;
+                        display: inline-flex;
+                        align-items: center;
+                        font-size: 0.85rem;
+                        transition: color 0.15s;
+                    `;
+                    delFolderBtn.innerHTML = '<i class="bi bi-x-circle-fill"></i>';
+                    delFolderBtn.addEventListener('mouseenter', () => {
+                        delFolderBtn.style.color = '#EF4444';
+                    });
+                    delFolderBtn.addEventListener('mouseleave', () => {
+                        delFolderBtn.style.color = isActive ? 'rgba(255,255,255,0.75)' : '#94A3B8';
+                    });
+                    delFolderBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        removeEmptyModelFolder(modelKey);
+                    });
+                    btn.appendChild(delFolderBtn);
+                }
+
                 btn.addEventListener('mouseenter', () => {
                     if (!btn.classList.contains('active')) {
                         btn.style.background = '#F1F5F9';
@@ -639,6 +709,195 @@
                 applyModelFilterToRows();
                 renderModelFolderTabs();
                 focusFirstVisibleRow();
+            }
+
+            // Prompt user to add a new model folder via SweetAlert
+            function promptAddNewModelFolder() {
+                const currentBrand = headerBrandInput?.value.trim() || '{{ $transmittal->brand }}' || '';
+
+                Swal.fire({
+                    title: '<div style="font-size: 1.15rem; font-weight: 800; color: #00205B;"><i class="bi bi-folder-plus" style="color: #F59E0B; margin-right: 6px;"></i> Magdagdag ng Model Folder</div>',
+                    html: `
+                        <div style="text-align: left; font-size: 0.85rem; color: #334155;">
+                            <p style="margin-bottom: 14px; color: #64748B;">
+                                Ilagay ang pangalan ng Model para makagawa ng panibagong folder at scan rows para sa mga units nito:
+                            </p>
+                            <div style="margin-bottom: 12px;">
+                                <label style="display: block; font-weight: 700; font-size: 0.8rem; margin-bottom: 4px; color: #00205B;">Model Name *</label>
+                                <input id="swalNewModelName" class="swal2-input" placeholder="Halimbawa: HG6245D, EG8145V5, ZXHN F670L" style="margin: 0; width: 100%; box-sizing: border-box; font-size: 0.9rem; font-weight: 700; text-transform: uppercase;">
+                            </div>
+                            <div style="margin-bottom: 12px;">
+                                <label style="display: block; font-weight: 700; font-size: 0.8rem; margin-bottom: 4px; color: #00205B;">Brand (Optional)</label>
+                                <input id="swalNewModelBrand" class="swal2-input" value="${escapeHtml(currentBrand)}" placeholder="Halimbawa: FIBERHOME, HUAWEI, ZTE" style="margin: 0; width: 100%; box-sizing: border-box; font-size: 0.9rem; text-transform: uppercase;">
+                            </div>
+                            <div>
+                                <label style="display: block; font-weight: 700; font-size: 0.8rem; margin-bottom: 4px; color: #00205B;">Bilang ng Blank Scan Rows na Ihahanda</label>
+                                <input type="number" id="swalNewModelRows" class="swal2-input" value="20" min="1" max="500" style="margin: 0; width: 100%; box-sizing: border-box; font-size: 0.9rem; text-align: center; font-weight: 700;">
+                                <small style="color: #64748B; font-size: 0.75rem;">(Maaari ring magdagdag ng karagdagang rows mamaya habang nag-i-scan)</small>
+                            </div>
+                        </div>
+                    `,
+                    focusConfirm: false,
+                    showCancelButton: true,
+                    confirmButtonText: '<i class="bi bi-folder-check"></i> Lumikha ng Folder',
+                    cancelButtonText: 'Kanselahin',
+                    confirmButtonColor: '#00205B',
+                    cancelButtonColor: '#64748B',
+                    didOpen: () => {
+                        const input = document.getElementById('swalNewModelName');
+                        if (input) input.focus();
+                    },
+                    preConfirm: () => {
+                        const modelName = document.getElementById('swalNewModelName')?.value.trim();
+                        const brandName = document.getElementById('swalNewModelBrand')?.value.trim();
+                        const rowsCount = parseInt(document.getElementById('swalNewModelRows')?.value, 10) || 20;
+
+                        if (!modelName) {
+                            Swal.showValidationMessage('Kailangan ilagay ang Model Name!');
+                            return false;
+                        }
+
+                        return { modelName, brandName, rowsCount };
+                    }
+                }).then((result) => {
+                    if (result.isConfirmed && result.value) {
+                        addNewModelFolder(result.value.modelName, result.value.brandName, result.value.rowsCount);
+                    }
+                });
+            }
+
+            // Create new model folder and generate initial rows
+            function addNewModelFolder(modelName, brandName, rowsCount) {
+                const cleanModel = modelName.trim().toUpperCase();
+                const cleanBrand = (brandName || headerBrandInput?.value || '{{ $transmittal->brand }}' || '').trim().toUpperCase();
+                const qty = Math.max(1, parseInt(rowsCount, 10) || 20);
+
+                // Add to knownModels
+                knownModels.add(cleanModel);
+
+                // If header model is currently empty, set it
+                if (headerModelInput && !headerModelInput.value.trim()) {
+                    headerModelInput.value = cleanModel;
+                }
+
+                // Set as active model folder
+                activeModelFilter = cleanModel;
+
+                // Check how many empty rows already exist for this model
+                let existingEmptyForThisModel = 0;
+                container.querySelectorAll('.subtable-row').forEach(r => {
+                    const m = r.querySelector('.row-model')?.value.trim().toUpperCase();
+                    const sn = r.querySelector('.row-sn')?.value.trim();
+                    const mac = r.querySelector('.row-mac')?.value.trim();
+                    if (m === cleanModel && !sn && !mac) {
+                        existingEmptyForThisModel++;
+                    }
+                });
+
+                const rowsToAdd = Math.max(0, qty - existingEmptyForThisModel);
+
+                if (rowsToAdd > 0) {
+                    const currentRowsCount = container.querySelectorAll('.subtable-row').length;
+                    const fragment = document.createDocumentFragment();
+
+                    for (let i = 0; i < rowsToAdd; i++) {
+                        const rowDiv = document.createElement('div');
+                        rowDiv.className = 'subtable-row';
+                        rowDiv.style.cssText = 'grid-template-columns: 40px 2fr 2fr 1.2fr 1.2fr 30px 40px; gap: 8px;';
+
+                        rowDiv.innerHTML = `
+                            <input type="hidden" name="item_id[]" class="row-item-id" value="">
+                            <div class="subtable-row-num">${currentRowsCount + i + 1}</div>
+                            <div>
+                                <input type="text" name="serial_number[]" class="form-control mono row-sn" placeholder="Scan Serial Number">
+                            </div>
+                            <div>
+                                <input type="text" name="mac_address[]" class="form-control mono row-mac" placeholder="Scan MAC Address">
+                            </div>
+                            <div>
+                                <input type="text" name="row_model[]" class="form-control row-model" value="${escapeHtml(cleanModel)}" placeholder="Model">
+                            </div>
+                            <div>
+                                <input type="text" name="row_brand[]" list="brandSuggestions" class="form-control row-brand" value="${escapeHtml(cleanBrand)}" placeholder="Brand">
+                            </div>
+                            <div class="row-status-indicator" style="display: flex; align-items: center; justify-content: center; font-size: 0.9rem;"></div>
+                            <div style="display: flex; align-items: center; justify-content: center;">
+                                <button type="button" class="btn btn-outline btn-icon btn-remove-row" title="Delete Row" style="color: #DC2626; border-color: #FECACA;">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                        `;
+                        attachRowListeners(rowDiv);
+                        fragment.appendChild(rowDiv);
+                    }
+                    container.appendChild(fragment);
+                }
+
+                // Apply filter, update display, and focus
+                applyModelFilterToRows();
+                updateRowNumbersAndCount();
+                renderModelFolderTabs();
+                focusFirstVisibleRow();
+
+                Swal.fire({
+                    toast: true,
+                    position: 'top-end',
+                    icon: 'success',
+                    title: `Model Folder "${cleanModel}" naidagdag na!`,
+                    text: `Nakahanda na ang ${qty} scan rows para sa ${cleanModel}.`,
+                    showConfirmButton: false,
+                    timer: 3000,
+                    timerProgressBar: true
+                });
+            }
+
+            // Remove empty model folder
+            function removeEmptyModelFolder(modelKey) {
+                Swal.fire({
+                    title: 'Tanggalin ang Model Folder?',
+                    html: `Sigurado ka bang nais mong tanggalin ang Model Folder <strong>"${escapeHtml(modelKey)}"</strong>?<br><small style="color: #64748B;">Mabubura rin ang mga hindi pa nagagamit na blankong scan rows nito.</small>`,
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'Oo, tanggalin',
+                    cancelButtonText: 'Kanselahin',
+                    confirmButtonColor: '#DC2626',
+                    cancelButtonColor: '#64748B'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        // Remove blank rows belonging to this model
+                        container.querySelectorAll('.subtable-row').forEach(r => {
+                            const m = r.querySelector('.row-model')?.value.trim();
+                            const sn = r.querySelector('.row-sn')?.value.trim();
+                            const mac = r.querySelector('.row-mac')?.value.trim();
+                            const itemId = r.querySelector('.row-item-id')?.value;
+                            if (m && m.toLowerCase() === modelKey.toLowerCase() && !sn && !mac && !itemId) {
+                                r.remove();
+                            }
+                        });
+
+                        knownModels.delete(modelKey);
+
+                        // Switch to remaining model
+                        const remaining = Array.from(knownModels);
+                        if (activeModelFilter.toLowerCase() === modelKey.toLowerCase()) {
+                            activeModelFilter = remaining.length > 0 ? remaining[0] : '';
+                        }
+
+                        applyModelFilterToRows();
+                        updateRowNumbersAndCount();
+                        renderModelFolderTabs();
+                        focusFirstVisibleRow();
+
+                        Swal.fire({
+                            toast: true,
+                            position: 'top-end',
+                            icon: 'info',
+                            title: `Model Folder "${modelKey}" tinanggal na.`,
+                            showConfirmButton: false,
+                            timer: 2500
+                        });
+                    }
+                });
             }
 
             function applyModelFilterToRows() {
@@ -783,7 +1042,18 @@
                 rowDiv.className = 'subtable-row';
                 rowDiv.style.cssText = 'grid-template-columns: 40px 2fr 2fr 1.2fr 1.2fr 30px 40px; gap: 8px;';
 
-                const brandVal = headerBrandInput?.value || '{{ $transmittal->brand }}';
+                let brandVal = headerBrandInput?.value || '{{ $transmittal->brand }}';
+                if (activeModelFilter) {
+                    const rowWithModel = Array.from(container.querySelectorAll('.subtable-row')).find(r => {
+                        const m = r.querySelector('.row-model')?.value.trim();
+                        return m && m.toLowerCase() === activeModelFilter.toLowerCase();
+                    });
+                    if (rowWithModel) {
+                        const b = rowWithModel.querySelector('.row-brand')?.value.trim();
+                        if (b) brandVal = b;
+                    }
+                }
+
                 const modelVal = (activeModelFilter && activeModelFilter !== 'ALL')
                     ? activeModelFilter
                     : (headerModelInput?.value || '{{ $transmittal->model }}');
@@ -946,6 +1216,12 @@
             container.querySelectorAll('.subtable-row').forEach(row => attachRowListeners(row));
             applyModelFilterToRows();
             updateRowNumbersAndCount();
+
+            // Add Model Folder Button
+            const btnAddModelFolder = document.getElementById('btnAddModelFolder');
+            if (btnAddModelFolder) {
+                btnAddModelFolder.addEventListener('click', promptAddNewModelFolder);
+            }
 
             // Button to generate bulk rows
             if (btnGenerateCustomRows) {
