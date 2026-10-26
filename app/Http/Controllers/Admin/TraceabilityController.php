@@ -424,9 +424,25 @@ class TraceabilityController extends Controller
             }
         }
 
+        $filterModel = $request->query('model') ?: $request->input('model');
+        if (!empty($filterModel) && $filterModel !== 'all') {
+            $query->where('model', $filterModel);
+        }
+
         $items = $query->get();
         $selectedBatch = $batch ?: ($items->first()?->batch);
 
-        return view('print.traceability_matrix', compact('items', 'selectedBatch'));
+        // Fetch all available models in this batch for the print toolbar filter dropdown
+        $modelsQuery = InventoryItem::query();
+        if ($batchId && $batchId !== 'all') {
+            $modelsQuery->where('batch_id', $batchId);
+        } else {
+            $modelsQuery->whereNotNull('batch_id');
+        }
+        $availableModels = $modelsQuery->get()
+            ->groupBy(fn($i) => trim($i->model ?: 'Unassigned Model'))
+            ->map(fn($g) => $g->count());
+
+        return view('print.traceability_matrix', compact('items', 'selectedBatch', 'filterModel', 'availableModels'));
     }
 }

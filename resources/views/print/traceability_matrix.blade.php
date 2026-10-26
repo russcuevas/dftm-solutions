@@ -34,6 +34,8 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
         }
         .btn {
             display: inline-flex;
@@ -105,16 +107,6 @@
             text-align: center;
         }
 
-        .batch-banner {
-            text-align: center;
-            font-weight: 900;
-            font-size: 11pt;
-            letter-spacing: 0.5px;
-            background: #FFFFFF;
-            padding: 5px 8px;
-            text-transform: uppercase;
-        }
-
         .sub-header-row th {
             font-weight: 800;
             text-align: center;
@@ -149,6 +141,9 @@
                 print-color-adjust: exact;
                 text-align: center;
             }
+            .model-table-block {
+                page-break-inside: avoid;
+            }
         }
 
         @keyframes spin {
@@ -159,12 +154,106 @@
 </head>
 <body>
 
+@php
+    $firstItem = $items->first();
+    $slipObj = $selectedSlip ?? ($firstItem?->outgoingSlip);
+    $batchObj = $selectedBatch ?? ($firstItem?->batch ?? ($batchObj ?? null));
+
+    $currentStatus = request('status');
+    if (!$currentStatus) {
+        $uniqueStatuses = $items->pluck('repair_status')->filter()->unique();
+        if ($uniqueStatuses->count() === 1) {
+            $currentStatus = $uniqueStatuses->first();
+        } elseif ($uniqueStatuses->count() > 1) {
+            $currentStatus = 'ALL';
+        } else {
+            $currentStatus = $firstItem->repair_status ?? ($items->count() > 0 ? 'GOOD' : '-');
+        }
+    }
+    $statusVal = strtoupper($currentStatus ?: '-');
+    $statusColor = match($statusVal) {
+        'BER' => '#DC2626',
+        'IN PROCESS', 'IN_PROCESS', 'PENDING' => '#D97706',
+        'REPAIRED', 'GOOD' => '#059669',
+        default => '#000000'
+    };
+
+    $batchHeaderStr = 'BATCH # 1';
+    if ($batchObj) {
+        $batchHeaderStr = str_contains(strtoupper($batchObj->batch_no), 'BATCH') ? strtoupper($batchObj->batch_no) : 'BATCH # ' . $batchObj->batch_no;
+    } elseif ($slipObj && $slipObj->batch_no) {
+        $batchHeaderStr = str_contains(strtoupper($slipObj->batch_no), 'BATCH') ? strtoupper($slipObj->batch_no) : 'BATCH # ' . $slipObj->batch_no;
+    }
+
+    $companyStr = $batchObj->company_name ?? ($slipObj->company_name ?? ($firstItem->company_name ?? 'DFTM DIGITAL SOLUTIONS'));
+    $dateDelivStr = ($batchObj && $batchObj->date_delivered ? $batchObj->date_delivered->format('Y-m-d') : null) ?? ($slipObj && $slipObj->date_delivered ? $slipObj->date_delivered->format('Y-m-d') : ($firstItem && $firstItem->date_delivered ? $firstItem->date_delivered->format('Y-m-d') : '-'));
+
+    // Group items by model for clear breakdown (same as incoming)
+    $itemsByModel = $items->groupBy(function($item) use ($batchObj, $slipObj) {
+        return trim($item->model ?: ($batchObj->model ?? ($slipObj->model ?? 'Unassigned Model')));
+    });
+
+    $exportData = [
+        'company_name' => $companyStr,
+        'status' => $statusVal,
+        'date_delivered' => $dateDelivStr,
+        'total_quantity' => $items->count(),
+        'batch_header' => $batchHeaderStr,
+        'filter_model' => $filterModel ?? null,
+        'groups' => []
+    ];
+
+    foreach ($itemsByModel as $modelName => $modelItems) {
+        $firstGroupItem = $modelItems->first();
+        $brandStr = strtoupper($firstGroupItem?->brand ?: ($batchObj->brand ?? ($slipObj->brand ?? 'HUAWEI')));
+        $groupItems = [];
+        foreach ($modelItems as $idx => $it) {
+            $groupItems[] = [
+                'no' => $idx + 1,
+                'technical_diagnostic' => $it->technical_diagnostic ?? '-',
+                'replace_parts' => $it->replace_parts ?? '-',
+                'repair_status' => strtoupper($it->repair_status ?? 'GOOD'),
+                'serial_number' => $it->serial_number ?? '-',
+                'mac_address' => $it->mac_address ?? '-',
+                'box_no' => $it->box_no ?? '-',
+            ];
+        }
+        $exportData['groups'][] = [
+            'model' => $modelName,
+            'brand' => $brandStr,
+            'subtotal' => count($groupItems),
+            'items' => $groupItems
+        ];
+    }
+@endphp
+
 <div class="print-btn-bar no-print">
     <div style="display: flex; align-items: center; gap: 10px;">
         <img src="{{ asset('images/logo.png') }}" alt="DFTM Logo" style="height: 32px;">
         <span style="font-weight: 700; color: #00205B;">DFTM DIGITAL SOLUTIONS</span>
+        @if(!empty($filterModel) && $filterModel !== 'all')
+            <span style="background: #EEF2FF; color: #4338CA; font-size: 0.78rem; font-weight: 800; padding: 3px 8px; border-radius: 4px; border: 1px solid #C7D2FE;">
+                Filter: {{ $filterModel }}
+            </span>
+        @endif
     </div>
-    <div style="display: flex; gap: 8px;">
+    <div style="display: flex; align-items: center; gap: 8px;">
+        @if(isset($availableModels) && $availableModels->count() > 1)
+        <div style="display: flex; align-items: center; gap: 6px; background: #FFFFFF; padding: 5px 12px; border-radius: 6px; border: 1px solid #CBD5E1;">
+            <label for="selectModelToolbar" style="font-size: 0.8rem; font-weight: 700; color: #00205B;">Switch Model:</label>
+            <select id="selectModelToolbar" onchange="changePrintModel(this.value)" style="border: none; font-size: 0.85rem; font-weight: 600; color: #00205B; background: transparent; outline: none; cursor: pointer;">
+                <option value="all" {{ empty($filterModel) || $filterModel === 'all' ? 'selected' : '' }}>
+                    All Models (Separated Per Model)
+                </option>
+                @foreach($availableModels as $mName => $mCount)
+                    <option value="{{ $mName }}" {{ ($filterModel ?? '') === $mName ? 'selected' : '' }}>
+                        {{ $mName }} ({{ $mCount }} units)
+                    </option>
+                @endforeach
+            </select>
+        </div>
+        @endif
+
         <button type="button" id="btnExportExcel" class="btn" style="background: #107C41; color: #FFFFFF; font-weight: 700; border: none; box-shadow: 0 2px 6px rgba(16,124,65,0.3);">
             <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M5.884 6.68a.5.5 0 1 0-.768.64L7.349 10l-2.233 2.68a.5.5 0 0 0 .768.64L8 10.748l2.116 2.572a.5.5 0 0 0 .768-.64L8.651 10l2.233-2.68a.5.5 0 0 0-.768-.64L8 9.252 5.884 6.68z"/><path d="M14 14V4.5L9.5 0H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2zM9.5 3A1.5 1.5 0 0 0 11 4.5h2V14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h5.5v2z"/></svg>
             Export to Excel (.xlsx)
@@ -186,64 +275,6 @@
     <!-- Main Title -->
     <div class="matrix-title">REPAIR TRACEABILITY MATRIX</div>
 
-    @php
-        $firstItem = $items->first();
-        $slipObj = $selectedSlip ?? ($firstItem?->outgoingSlip);
-        $batchObj = $selectedBatch ?? ($firstItem?->batch);
-
-        $currentStatus = request('status');
-        if (!$currentStatus) {
-            $uniqueStatuses = $items->pluck('repair_status')->filter()->unique();
-            if ($uniqueStatuses->count() === 1) {
-                $currentStatus = $uniqueStatuses->first();
-            } elseif ($uniqueStatuses->count() > 1) {
-                $currentStatus = 'ALL';
-            } else {
-                $currentStatus = $firstItem->repair_status ?? ($items->count() > 0 ? 'GOOD' : '-');
-            }
-        }
-        $statusVal = strtoupper($currentStatus ?: '-');
-        $statusColor = match($statusVal) {
-            'BER' => '#DC2626',
-            'IN PROCESS', 'IN_PROCESS', 'PENDING' => '#D97706',
-            'REPAIRED', 'GOOD' => '#059669',
-            default => '#000000'
-        };
-
-        $batchHeaderStr = 'BATCH # 1';
-        if ($batchObj) {
-            $batchHeaderStr = str_contains(strtoupper($batchObj->batch_no), 'BATCH') ? strtoupper($batchObj->batch_no) : 'BATCH # ' . $batchObj->batch_no;
-        } elseif ($slipObj && $slipObj->batch_no) {
-            $batchHeaderStr = str_contains(strtoupper($slipObj->batch_no), 'BATCH') ? strtoupper($slipObj->batch_no) : 'BATCH # ' . $slipObj->batch_no;
-        }
-
-        $brandStr = strtoupper($batchObj->brand ?? ($slipObj->brand ?? ($firstItem->brand ?? 'HUAWEI')));
-        $modelStr = strtoupper($batchObj->model ?? ($slipObj->model ?? ($firstItem->model ?? '')));
-        $companyStr = $batchObj->company_name ?? ($slipObj->company_name ?? ($firstItem->company_name ?? 'DFTM DIGITAL SOLUTIONS'));
-        $dateDelivStr = ($batchObj && $batchObj->date_delivered ? $batchObj->date_delivered->format('Y-m-d') : null) ?? ($slipObj && $slipObj->date_delivered ? $slipObj->date_delivered->format('Y-m-d') : ($firstItem && $firstItem->date_delivered ? $firstItem->date_delivered->format('Y-m-d') : '-'));
-
-        $exportData = [
-            'company_name' => $companyStr,
-            'status' => $statusVal,
-            'date_delivered' => $dateDelivStr,
-            'total_quantity' => $items->count(),
-            'batch_header' => $batchHeaderStr,
-            'brand' => $brandStr,
-            'model' => $modelStr,
-            'items' => $items->map(function($it, $idx) {
-                return [
-                    'no' => $idx + 1,
-                    'technical_diagnostic' => $it->technical_diagnostic ?? '-',
-                    'replace_parts' => $it->replace_parts ?? '-',
-                    'repair_status' => strtoupper($it->repair_status ?? 'GOOD'),
-                    'serial_number' => $it->serial_number ?? '-',
-                    'mac_address' => $it->mac_address ?? '-',
-                    'box_no' => $it->box_no ?? '-',
-                ];
-            })->values()
-        ];
-    @endphp
-
     <!-- Header Block Table (Matching Reference Image) -->
     <table class="excel-table">
         <tr>
@@ -258,67 +289,104 @@
             <td class="header-label">DATE DELIVERED:</td>
             <td class="header-val">{{ $dateDelivStr }}</td>
             <td class="header-label">TOTAL QUANTITY:</td>
-            <td class="header-val">{{ $items->count() }} PCS</td>
+            <td class="header-val" style="font-weight: 900; font-size: 11pt;">{{ $items->count() }} PCS</td>
         </tr>
     </table>
 
-    <!-- Hierarchical Matrix Data Table (Matching Reference Image) -->
-    <table class="excel-table" style="border-top: none; margin-top: -1px;">
-        <thead>
-            <!-- Level 1: NO., TECHNICAL DIAGNOSTIC (S), REPLACE PARTS, STATUS, MATERIAL DESCRIPTION, BOX NO. -->
-            <tr class="sub-header-row">
-                <th rowspan="4" class="col-no" style="vertical-align: middle;">NO.</th>
-                <th rowspan="4" style="min-width: 170px; vertical-align: middle;">TECHNICAL DIAGNOSTIC (S)</th>
-                <th rowspan="4" style="min-width: 150px; vertical-align: middle;">REPLACE PARTS</th>
-                <th rowspan="4" style="min-width: 100px; vertical-align: middle;">STATUS</th>
-                <th colspan="2" style="text-align: center; font-weight: 900; letter-spacing: 0.5px;">
-                    MATERIAL DESCRIPTION
-                </th>
-                <th rowspan="4" style="width: 80px; vertical-align: middle;">BOX NO.</th>
+    <!-- Render Each Model Matrix Table Separately (same as incoming) -->
+    @forelse($itemsByModel as $modelName => $modelItems)
+        @php
+            $firstGroupItem = $modelItems->first();
+            $mBrandStr = strtoupper($firstGroupItem?->brand ?: ($batchObj->brand ?? ($slipObj->brand ?? 'HUAWEI')));
+        @endphp
+
+        <div class="model-table-block" style="margin-top: 16px;">
+            <table class="excel-table" style="border-top: 1px solid #000000;">
+                <thead>
+                    <!-- Level 1: NO., TECHNICAL DIAGNOSTIC (S), REPLACE PARTS, STATUS, MATERIAL DESCRIPTION, BOX NO. -->
+                    <tr class="sub-header-row">
+                        <th rowspan="4" class="col-no" style="vertical-align: middle;">NO.</th>
+                        <th rowspan="4" style="min-width: 170px; vertical-align: middle;">TECHNICAL DIAGNOSTIC (S)</th>
+                        <th rowspan="4" style="min-width: 150px; vertical-align: middle;">REPLACE PARTS</th>
+                        <th rowspan="4" style="min-width: 100px; vertical-align: middle;">STATUS</th>
+                        <th colspan="2" style="text-align: center; font-weight: 900; letter-spacing: 0.5px;">
+                            MATERIAL DESCRIPTION
+                        </th>
+                        <th rowspan="4" style="width: 80px; vertical-align: middle;">BOX NO.</th>
+                    </tr>
+                    <!-- Level 2: BATCH # 1 -->
+                    <tr class="sub-header-row">
+                        <th colspan="2" style="text-align: center; font-weight: 900; font-size: 11pt; letter-spacing: 0.5px;">
+                            {{ $batchHeaderStr }}
+                        </th>
+                    </tr>
+                    <!-- Level 3: BRAND : HUAWEI | MODEL: ... -->
+                    <tr class="sub-header-row">
+                        <th style="text-align: center; width: 25%; font-weight: 800;">
+                            BRAND : {{ $mBrandStr }}
+                        </th>
+                        <th style="text-align: center; width: 25%; font-weight: 800;">
+                            MODEL: {{ strtoupper($modelName) }}
+                        </th>
+                    </tr>
+                    <!-- Level 4: SERIAL NUMBER | MAC ADDRESS -->
+                    <tr class="sub-header-row">
+                        <th style="text-align: center;">SERIAL NUMBER</th>
+                        <th style="text-align: center;">MAC ADDRESS</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($modelItems as $idx => $item)
+                        <tr>
+                            <td class="col-no">{{ $idx + 1 }}</td>
+                            <td style="font-weight: 700; color: #00205B; text-align: center;">{{ $item->technical_diagnostic ?? '' }}</td>
+                            <td style="font-weight: 600; text-align: center;">{{ $item->replace_parts ?? '' }}</td>
+                            <td style="text-align: center; font-weight: 800; color: {{ $item->repair_status === 'BER' ? '#DC2626' : (in_array($item->repair_status, ['In process', 'IN_PROCESS', 'PENDING']) ? '#D97706' : '#059669') }};">
+                                {{ strtoupper($item->repair_status ?? 'GOOD') }}
+                            </td>
+                            <td style="font-weight: 700; color: #00205B; text-align: center;">{{ $item->serial_number ?? '' }}</td>
+                            <td style="text-align: center;">{{ $item->mac_address ?? '' }}</td>
+                            <td style="text-align: center;">{{ $item->box_no ?? '' }}</td>
+                        </tr>
+                    @endforeach
+                </tbody>
+                @if($itemsByModel->count() > 1)
+                <tfoot>
+                    <tr>
+                        <td colspan="4" style="text-align: right; font-weight: 800; background: #F8FAFC; padding: 6px 12px;">
+                            SUBTOTAL FOR MODEL {{ strtoupper($modelName) }}:
+                        </td>
+                        <td colspan="3" style="text-align: center; font-weight: 900; background: #F8FAFC; padding: 6px 12px; font-size: 10.5pt; color: #00205B;">
+                            {{ $modelItems->count() }} PCS
+                        </td>
+                    </tr>
+                </tfoot>
+                @endif
+            </table>
+        </div>
+    @empty
+        <table class="excel-table" style="margin-top: 16px;">
+            <tr>
+                <td style="text-align: center; padding: 32px; font-weight: bold; color: #475569;">
+                    No units recorded for this batch / model selection.
+                </td>
             </tr>
-            <!-- Level 2: BATCH # 1 -->
-            <tr class="sub-header-row">
-                <th colspan="2" style="text-align: center; font-weight: 900; font-size: 11pt; letter-spacing: 0.5px;">
-                    {{ $batchHeaderStr }}
-                </th>
-            </tr>
-            <!-- Level 3: BRAND : HUAWEI | MODEL: ... -->
-            <tr class="sub-header-row">
-                <th style="text-align: center; width: 25%; font-weight: 800;">
-                    BRAND : {{ $brandStr }}
-                </th>
-                <th style="text-align: center; width: 25%; font-weight: 800;">
-                    MODEL: {{ $modelStr }}
-                </th>
-            </tr>
-            <!-- Level 4: SERIAL NUMBER | MAC ADDRESS -->
-            <tr class="sub-header-row">
-                <th style="text-align: center;">SERIAL NUMBER</th>
-                <th style="text-align: center;">MAC ADDRESS</th>
-            </tr>
-        </thead>
-        <tbody>
-            @forelse($items as $idx => $item)
-                <tr>
-                    <td class="col-no">{{ $idx + 1 }}</td>
-                    <td style="font-weight: 700; color: #00205B; text-align: center;">{{ $item->technical_diagnostic ?? '' }}</td>
-                    <td style="font-weight: 600; text-align: center;">{{ $item->replace_parts ?? '' }}</td>
-                    <td style="text-align: center; font-weight: 800; color: {{ $item->repair_status === 'BER' ? '#DC2626' : (in_array($item->repair_status, ['In process', 'IN_PROCESS', 'PENDING']) ? '#D97706' : '#059669') }};">
-                        {{ strtoupper($item->repair_status ?? 'GOOD') }}
-                    </td>
-                    <td style="font-weight: 700; color: #00205B; text-align: center;">{{ $item->serial_number ?? '' }}</td>
-                    <td style="text-align: center;">{{ $item->mac_address ?? '' }}</td>
-                    <td style="text-align: center;">{{ $item->box_no ?? '' }}</td>
-                </tr>
-            @empty
-                <tr>
-                    <td colspan="7" style="text-align: center; padding: 32px; font-weight: bold; color: #475569;">
-                        No data available
-                    </td>
-                </tr>
-            @endforelse
-        </tbody>
+        </table>
+    @endforelse
+
+    <!-- Consolidated Grand Total Block (if multiple models) -->
+    @if($itemsByModel->count() > 1)
+    <table class="excel-table" style="margin-top: 14px;">
+        <tr>
+            <td style="font-weight: 900; text-align: right; width: 60%; background: #EEF2FF; color: #00205B; padding: 8px 14px; font-size: 10.5pt;">
+                CONSOLIDATED GRAND TOTAL QUANTITY:
+            </td>
+            <td style="font-weight: 900; text-align: center; width: 40%; background: #EEF2FF; color: #00205B; padding: 8px 14px; font-size: 11pt;">
+                {{ $items->count() }} PCS
+            </td>
+        </tr>
     </table>
+    @endif
 
     <!-- Signature Block -->
     <div style="margin-top: 28px; display: grid; grid-template-columns: 1fr 1fr; gap: 40px; font-size: 10pt;">
@@ -343,6 +411,16 @@
 
 <script>
     const matrixData = @json($exportData);
+
+    function changePrintModel(val) {
+        const url = new URL(window.location.href);
+        if (val === 'all') {
+            url.searchParams.delete('model');
+        } else {
+            url.searchParams.set('model', val);
+        }
+        window.location.href = url.toString();
+    }
 
     async function getLogoBase64() {
         try {
@@ -482,7 +560,6 @@
             sp1.height = 6;
 
             // 3. Header Block Table (Metadata)
-            // Determine Status Color
             let statusColorArgb = 'FF000000';
             const sUpper = (matrixData.status || '').toUpperCase();
             if (sUpper === 'BER') {
@@ -551,136 +628,199 @@
             meta2.getCell(6).font = { name: 'Arial', size: 10.5, bold: true };
             meta2.getCell(6).alignment = { horizontal: 'center', vertical: 'middle' };
 
-            // 4. Hierarchical Multi-Level Matrix Header (Rows 1 to 4)
-            // Level 1: NO. | TECHNICAL DIAGNOSTIC (S) | REPLACE PARTS | STATUS | MATERIAL DESCRIPTION | | BOX NO.
-            const hRow1 = worksheet.addRow([
-                'NO.',
-                'TECHNICAL DIAGNOSTIC (S)',
-                'REPLACE PARTS',
-                'STATUS',
-                'MATERIAL DESCRIPTION',
-                '',
-                'BOX NO.'
-            ]);
-            hRow1.height = 22;
-            const hr1 = hRow1.number;
+            // Spacer before data tables
+            const sp2 = worksheet.addRow([]);
+            sp2.height = 8;
 
-            // Level 2: Batch Header across Cols E-F
-            const hRow2 = worksheet.addRow([
-                '',
-                '',
-                '',
-                '',
-                matrixData.batch_header || 'BATCH # 1',
-                '',
-                ''
-            ]);
-            hRow2.height = 22;
-            const hr2 = hRow2.number;
-
-            // Level 3: BRAND : ... | MODEL: ...
-            const hRow3 = worksheet.addRow([
-                '',
-                '',
-                '',
-                '',
-                `BRAND : ${matrixData.brand || ''}`.trim(),
-                `MODEL: ${matrixData.model || ''}`.trim(),
-                ''
-            ]);
-            hRow3.height = 22;
-            const hr3 = hRow3.number;
-
-            // Level 4: SERIAL NUMBER | MAC ADDRESS
-            const hRow4 = worksheet.addRow([
-                '',
-                '',
-                '',
-                '',
-                'SERIAL NUMBER',
-                'MAC ADDRESS',
-                ''
-            ]);
-            hRow4.height = 22;
-            const hr4 = hRow4.number;
-
-            // Merging Hierarchical Header Cells
-            worksheet.mergeCells(`A${hr1}:A${hr4}`);
-            worksheet.mergeCells(`B${hr1}:B${hr4}`);
-            worksheet.mergeCells(`C${hr1}:C${hr4}`);
-            worksheet.mergeCells(`D${hr1}:D${hr4}`);
-            worksheet.mergeCells(`G${hr1}:G${hr4}`);
-
-            worksheet.mergeCells(`E${hr1}:F${hr1}`);
-            worksheet.mergeCells(`E${hr2}:F${hr2}`);
-
-            setRangeBorder(hr1, 1, hr4, 7);
-
-            for (let r = hr1; r <= hr4; r++) {
-                const curRow = worksheet.getRow(r);
-                for (let c = 1; c <= 7; c++) {
-                    const cell = curRow.getCell(c);
-                    cell.font = { name: 'Arial', size: 9.5, bold: true };
-                    cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
-                }
-            }
-
-            // 5. Data Rows
-            if (matrixData.items && matrixData.items.length > 0) {
-                matrixData.items.forEach(item => {
-                    const row = worksheet.addRow([
-                        item.no,
-                        String(item.technical_diagnostic || '-'),
-                        String(item.replace_parts || '-'),
-                        String(item.repair_status || 'GOOD'),
-                        String(item.serial_number || '-'),
-                        String(item.mac_address || '-'),
-                        String(item.box_no || '-')
-                    ]);
-                    row.height = 20;
-                    const rNum = row.number;
-                    setRangeBorder(rNum, 1, rNum, 7);
-
-                    // Col 1: NO.
-                    row.getCell(1).font = { name: 'Arial', size: 9.5, bold: true };
-                    row.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
-
-                    // Col 2: TECHNICAL DIAGNOSTIC (S)
-                    row.getCell(2).font = { name: 'Arial', size: 9.5, bold: true, color: { argb: 'FF00205B' } };
-                    row.getCell(2).alignment = { horizontal: 'center', vertical: 'middle' };
-
-                    // Col 3: REPLACE PARTS
-                    row.getCell(3).font = { name: 'Arial', size: 9.5, bold: false };
-                    row.getCell(3).alignment = { horizontal: 'center', vertical: 'middle' };
-
-                    // Col 4: STATUS (Color-coded)
-                    let stColor = 'FF059669';
-                    const itSt = (item.repair_status || '').toUpperCase();
-                    if (itSt === 'BER') {
-                        stColor = 'FFDC2626';
-                    } else if (itSt.includes('PROCESS') || itSt === 'PENDING') {
-                        stColor = 'FFD97706';
+            // 4. Data Groups per Model (Hierarchical Header & Items for each model)
+            if (matrixData.groups && matrixData.groups.length > 0) {
+                matrixData.groups.forEach((group, gIdx) => {
+                    if (gIdx > 0) {
+                        const spacer = worksheet.addRow([]);
+                        spacer.height = 14;
                     }
-                    row.getCell(4).font = { name: 'Arial', size: 9.5, bold: true, color: { argb: stColor } };
-                    row.getCell(4).alignment = { horizontal: 'center', vertical: 'middle' };
 
-                    // Col 5: SERIAL NUMBER (Bold, Navy, Text Format)
-                    row.getCell(5).font = { name: 'Arial', size: 9.5, bold: true, color: { argb: 'FF00205B' } };
-                    row.getCell(5).alignment = { horizontal: 'center', vertical: 'middle' };
-                    row.getCell(5).numFmt = '@';
+                    // Level 1: NO. | TECHNICAL DIAGNOSTIC (S) | REPLACE PARTS | STATUS | MATERIAL DESCRIPTION | | BOX NO.
+                    const hRow1 = worksheet.addRow([
+                        'NO.',
+                        'TECHNICAL DIAGNOSTIC (S)',
+                        'REPLACE PARTS',
+                        'STATUS',
+                        'MATERIAL DESCRIPTION',
+                        '',
+                        'BOX NO.'
+                    ]);
+                    hRow1.height = 22;
+                    const hr1 = hRow1.number;
 
-                    // Col 6: MAC ADDRESS (Text Format)
-                    row.getCell(6).font = { name: 'Arial', size: 9.5 };
-                    row.getCell(6).alignment = { horizontal: 'center', vertical: 'middle' };
-                    row.getCell(6).numFmt = '@';
+                    // Level 2: Batch Header across Cols E-F
+                    const hRow2 = worksheet.addRow([
+                        '',
+                        '',
+                        '',
+                        '',
+                        matrixData.batch_header || 'BATCH # 1',
+                        '',
+                        ''
+                    ]);
+                    hRow2.height = 22;
+                    const hr2 = hRow2.number;
 
-                    // Col 7: BOX NO.
-                    row.getCell(7).font = { name: 'Arial', size: 9.5 };
-                    row.getCell(7).alignment = { horizontal: 'center', vertical: 'middle' };
-                    row.getCell(7).numFmt = '@';
+                    // Level 3: BRAND : ... | MODEL: ...
+                    const hRow3 = worksheet.addRow([
+                        '',
+                        '',
+                        '',
+                        '',
+                        `BRAND : ${group.brand || 'HUAWEI'}`.trim(),
+                        `MODEL: ${group.model || ''}`.trim(),
+                        ''
+                    ]);
+                    hRow3.height = 22;
+                    const hr3 = hRow3.number;
+
+                    // Level 4: SERIAL NUMBER | MAC ADDRESS
+                    const hRow4 = worksheet.addRow([
+                        '',
+                        '',
+                        '',
+                        '',
+                        'SERIAL NUMBER',
+                        'MAC ADDRESS',
+                        ''
+                    ]);
+                    hRow4.height = 22;
+                    const hr4 = hRow4.number;
+
+                    // Merging Hierarchical Header Cells
+                    worksheet.mergeCells(`A${hr1}:A${hr4}`);
+                    worksheet.mergeCells(`B${hr1}:B${hr4}`);
+                    worksheet.mergeCells(`C${hr1}:C${hr4}`);
+                    worksheet.mergeCells(`D${hr1}:D${hr4}`);
+                    worksheet.mergeCells(`G${hr1}:G${hr4}`);
+
+                    worksheet.mergeCells(`E${hr1}:F${hr1}`);
+                    worksheet.mergeCells(`E${hr2}:F${hr2}`);
+
+                    setRangeBorder(hr1, 1, hr4, 7);
+
+                    for (let r = hr1; r <= hr4; r++) {
+                        const curRow = worksheet.getRow(r);
+                        for (let c = 1; c <= 7; c++) {
+                            const cell = curRow.getCell(c);
+                            cell.font = { name: 'Arial', size: 9.5, bold: true };
+                            cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+                        }
+                    }
+
+                    // Data Rows for this model
+                    group.items.forEach(item => {
+                        const row = worksheet.addRow([
+                            item.no,
+                            String(item.technical_diagnostic || '-'),
+                            String(item.replace_parts || '-'),
+                            String(item.repair_status || 'GOOD'),
+                            String(item.serial_number || '-'),
+                            String(item.mac_address || '-'),
+                            String(item.box_no || '-')
+                        ]);
+                        row.height = 20;
+                        const rNum = row.number;
+                        setRangeBorder(rNum, 1, rNum, 7);
+
+                        // Col 1: NO.
+                        row.getCell(1).font = { name: 'Arial', size: 9.5, bold: true };
+                        row.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
+
+                        // Col 2: TECHNICAL DIAGNOSTIC (S)
+                        row.getCell(2).font = { name: 'Arial', size: 9.5, bold: true, color: { argb: 'FF00205B' } };
+                        row.getCell(2).alignment = { horizontal: 'center', vertical: 'middle' };
+
+                        // Col 3: REPLACE PARTS
+                        row.getCell(3).font = { name: 'Arial', size: 9.5, bold: false };
+                        row.getCell(3).alignment = { horizontal: 'center', vertical: 'middle' };
+
+                        // Col 4: STATUS (Color-coded)
+                        let stColor = 'FF059669';
+                        const itSt = (item.repair_status || '').toUpperCase();
+                        if (itSt === 'BER') {
+                            stColor = 'FFDC2626';
+                        } else if (itSt.includes('PROCESS') || itSt === 'PENDING') {
+                            stColor = 'FFD97706';
+                        }
+                        row.getCell(4).font = { name: 'Arial', size: 9.5, bold: true, color: { argb: stColor } };
+                        row.getCell(4).alignment = { horizontal: 'center', vertical: 'middle' };
+
+                        // Col 5: SERIAL NUMBER (Bold, Navy, Text Format)
+                        row.getCell(5).font = { name: 'Arial', size: 9.5, bold: true, color: { argb: 'FF00205B' } };
+                        row.getCell(5).alignment = { horizontal: 'center', vertical: 'middle' };
+                        row.getCell(5).numFmt = '@';
+
+                        // Col 6: MAC ADDRESS (Text Format)
+                        row.getCell(6).font = { name: 'Arial', size: 9.5 };
+                        row.getCell(6).alignment = { horizontal: 'center', vertical: 'middle' };
+                        row.getCell(6).numFmt = '@';
+
+                        // Col 7: BOX NO.
+                        row.getCell(7).font = { name: 'Arial', size: 9.5 };
+                        row.getCell(7).alignment = { horizontal: 'center', vertical: 'middle' };
+                        row.getCell(7).numFmt = '@';
+                    });
+
+                    // Subtotal row if multiple groups
+                    if (matrixData.groups.length > 1) {
+                        const subRow = worksheet.addRow([
+                            `SUBTOTAL FOR MODEL: ${group.model}`,
+                            '',
+                            '',
+                            '',
+                            '',
+                            `${group.subtotal} PCS`,
+                            ''
+                        ]);
+                        subRow.height = 22;
+                        const subNum = subRow.number;
+                        worksheet.mergeCells(`A${subNum}:E${subNum}`);
+                        worksheet.mergeCells(`F${subNum}:G${subNum}`);
+                        setRangeBorder(subNum, 1, subNum, 7);
+
+                        subRow.getCell(1).font = { name: 'Arial', size: 9.5, bold: true };
+                        subRow.getCell(1).alignment = { horizontal: 'right', vertical: 'middle' };
+                        subRow.getCell(1).fill = greyFill;
+
+                        subRow.getCell(6).font = { name: 'Arial', size: 10, bold: true, color: { argb: 'FF00205B' } };
+                        subRow.getCell(6).alignment = { horizontal: 'center', vertical: 'middle' };
+                        subRow.getCell(6).fill = greyFill;
+                    }
                 });
+
+                // Grand Total Row if multiple groups
+                if (matrixData.groups.length > 1) {
+                    const gtRow = worksheet.addRow([
+                        'CONSOLIDATED GRAND TOTAL QUANTITY:',
+                        '',
+                        '',
+                        '',
+                        '',
+                        `${matrixData.total_quantity} PCS`,
+                        ''
+                    ]);
+                    gtRow.height = 24;
+                    const gtNum = gtRow.number;
+                    worksheet.mergeCells(`A${gtNum}:E${gtNum}`);
+                    worksheet.mergeCells(`F${gtNum}:G${gtNum}`);
+                    setRangeBorder(gtNum, 1, gtNum, 7);
+
+                    gtRow.getCell(1).font = { name: 'Arial', size: 10.5, bold: true, color: { argb: 'FF00205B' } };
+                    gtRow.getCell(1).alignment = { horizontal: 'right', vertical: 'middle' };
+                    gtRow.getCell(1).fill = greyFill;
+
+                    gtRow.getCell(6).font = { name: 'Arial', size: 11, bold: true, color: { argb: 'FF00205B' } };
+                    gtRow.getCell(6).alignment = { horizontal: 'center', vertical: 'middle' };
+                    gtRow.getCell(6).fill = greyFill;
+                }
             } else {
-                const emptyRow = worksheet.addRow(['No data available', '', '', '', '', '', '']);
+                const emptyRow = worksheet.addRow(['No units recorded for this batch / model selection.', '', '', '', '', '', '']);
                 emptyRow.height = 26;
                 const eNum = emptyRow.number;
                 worksheet.mergeCells(`A${eNum}:G${eNum}`);
@@ -689,7 +829,7 @@
                 emptyRow.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
             }
 
-            // 6. Signature Block
+            // 5. Signature Block
             worksheet.addRow([]); worksheet.lastRow.height = 16;
             worksheet.addRow([]); worksheet.lastRow.height = 16;
 
@@ -729,12 +869,17 @@
             sigLabels.getCell(5).font = { name: 'Arial', size: 9.5, bold: true };
             sigLabels.getCell(5).alignment = { horizontal: 'center', vertical: 'top' };
 
-            // 7. Write to Buffer and Trigger Download
+            // 6. Write to Buffer and Trigger Download
             const buffer = await workbook.xlsx.writeBuffer();
             const blob = new Blob([buffer], {
                 type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
             });
-            const filename = `Repair_Traceability_Matrix_${matrixData.status || 'Report'}.xlsx`;
+
+            const cleanBatch = (matrixData.batch_header || 'BATCH').replace(/[^a-zA-Z0-9_-]/g, '_');
+            const modelPart = matrixData.filter_model 
+                ? `_${matrixData.filter_model.replace(/[^a-zA-Z0-9_-]/g, '_')}` 
+                : (matrixData.groups.length === 1 ? `_${matrixData.groups[0].model.replace(/[^a-zA-Z0-9_-]/g, '_')}` : '_All_Models');
+            const filename = `Repair_Traceability_Matrix_${cleanBatch}${modelPart}.xlsx`;
 
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');

@@ -104,23 +104,36 @@ class TraceabilityController extends Controller
         $batchId = $request->input('batch_id');
 
         $batchObj = $this->getClientBatchesQuery($companyName)->findOrFail($batchId);
-        $items = $batchObj->items()
+        $query = $batchObj->items()
             ->orderByRaw("CASE WHEN box_no IS NULL OR box_no = '' THEN 1 ELSE 0 END ASC")
             ->orderByRaw("LENGTH(box_no) ASC, box_no ASC")
             ->orderBy('item_no', 'asc')
-            ->orderBy('id', 'asc')
-            ->get();
+            ->orderBy('id', 'asc');
+
+        $filterModel = $request->query('model') ?: $request->input('model');
+        if (!empty($filterModel) && $filterModel !== 'all') {
+            $query->where('model', $filterModel);
+        }
+
+        $items = $query->get();
 
         $slipObj = null;
         $firstItem = $items->first();
         $currentStatus = $batchObj->status ?: ($firstItem?->repair_status ?: 'In process');
+
+        $availableModels = $batchObj->items()
+            ->get()
+            ->groupBy(fn($i) => trim($i->model ?: 'Unassigned Model'))
+            ->map(fn($g) => $g->count());
 
         return view('print.traceability_matrix', compact(
             'batchObj',
             'slipObj',
             'items',
             'firstItem',
-            'currentStatus'
+            'currentStatus',
+            'filterModel',
+            'availableModels'
         ));
     }
 }
