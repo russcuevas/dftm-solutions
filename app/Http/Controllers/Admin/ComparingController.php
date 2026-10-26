@@ -378,9 +378,8 @@ class ComparingController extends Controller
             return $batch;
         });
 
-        if ($request->filled('draft_id')) {
-            ComparingDraft::destroy($request->input('draft_id'));
-        }
+        // Clear comparing draft upon successful batch creation
+        ComparingDraft::truncate();
 
         return redirect()->route('admin.traceability.index', ['batch_id' => $batch->id])
             ->with('success', "Comparing Complete! Batch '{$batch->batch_no}' successfully created with {$batch->total_quantity} units. Now open in Traceability Matrix.");

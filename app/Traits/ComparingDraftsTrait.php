@@ -9,51 +9,55 @@ use Illuminate\Support\Facades\Auth;
 trait ComparingDraftsTrait
 {
     /**
-     * Get all comparing drafts from the database.
+     * Get the single active comparing draft from the database.
+     * Enforces single draft policy so users are never confused.
      */
     public function getDrafts(Request $request)
     {
-        $drafts = ComparingDraft::with('user:id,name,role')
-            ->latest('updated_at')
-            ->get()
-            ->map(function ($d) {
-                return [
-                    'id' => $d->id,
-                    'title' => $d->title,
-                    'company_name' => $d->company_name,
-                    'brand' => $d->brand,
-                    'model' => $d->model,
-                    'batch_no' => $d->batch_no,
-                    'date_delivered' => $d->date_delivered,
-                    'status' => $d->status,
-                    'sound_enabled' => (bool)$d->sound_enabled,
-                    'verified_count' => (int)$d->verified_count,
-                    'total_rows' => (int)$d->total_rows,
-                    'created_by' => $d->user ? $d->user->name : 'Staff',
-                    'is_owner' => Auth::id() === $d->user_id,
-                    'updated_at' => $d->updated_at ? $d->updated_at->toISOString() : null,
-                    'updated_at_formatted' => $d->updated_at ? $d->updated_at->timezone('Asia/Manila')->format('M d, Y h:i A') : '',
-                ];
-            });
+        $draft = ComparingDraft::with('user:id,name,role')->latest('updated_at')->first();
+
+        $drafts = collect();
+        if ($draft) {
+            $drafts->push([
+                'id' => $draft->id,
+                'title' => $draft->title ?: ($draft->company_name ? $draft->company_name . ' - ' . ($draft->batch_no ?: 'Draft') : 'Comparing Draft'),
+                'company_name' => $draft->company_name,
+                'brand' => $draft->brand,
+                'model' => $draft->model,
+                'batch_no' => $draft->batch_no,
+                'date_delivered' => $draft->date_delivered,
+                'status' => $draft->status,
+                'sound_enabled' => (bool)$draft->sound_enabled,
+                'verified_count' => (int)$draft->verified_count,
+                'total_rows' => (int)$draft->total_rows,
+                'created_by' => $draft->user ? $draft->user->name : 'Staff',
+                'is_owner' => Auth::id() === $draft->user_id,
+                'updated_at' => $draft->updated_at ? $draft->updated_at->toISOString() : null,
+                'updated_at_formatted' => $draft->updated_at ? $draft->updated_at->timezone('Asia/Manila')->format('M d, Y h:i A') : '',
+            ]);
+        }
 
         return response()->json([
             'success' => true,
             'drafts' => $drafts,
             'total' => $drafts->count(),
+            'single_draft' => $drafts->first() ?: null,
         ]);
     }
 
     /**
-     * Get a specific draft with full row data from the database.
+     * Get the single draft with full row data from the database.
      */
     public function getDraft($id)
     {
-        $draft = ComparingDraft::with('user:id,name')->find($id);
+        $draft = ($id === 'active' || empty($id))
+            ? ComparingDraft::with('user:id,name')->latest('updated_at')->first()
+            : ComparingDraft::with('user:id,name')->find($id);
 
         if (!$draft) {
             return response()->json([
                 'success' => false,
-                'message' => 'Draft not found in database.',
+                'message' => 'Walang naka-save na draft sa database.',
             ], 404);
         }
 
@@ -61,7 +65,7 @@ trait ComparingDraftsTrait
             'success' => true,
             'draft' => [
                 'id' => $draft->id,
-                'title' => $draft->title,
+                'title' => $draft->title ?: ($draft->company_name ? $draft->company_name . ' - ' . ($draft->batch_no ?: 'Draft') : 'Comparing Draft'),
                 'company_name' => $draft->company_name,
                 'brand' => $draft->brand,
                 'model' => $draft->model,
@@ -79,13 +83,11 @@ trait ComparingDraftsTrait
     }
 
     /**
-     * Save or update draft in the database.
+     * Save or update the single draft in the database.
+     * Enforces single draft policy so only one draft ever exists.
      */
     public function saveDraft(Request $request)
     {
-        $id = $request->input('id');
-        $asNew = filter_var($request->input('as_new', false), FILTER_VALIDATE_BOOLEAN);
-
         $company = trim($request->input('company_name', ''));
         $brand = trim($request->input('brand', ''));
         $model = trim($request->input('model', ''));
@@ -109,23 +111,18 @@ trait ComparingDraftsTrait
             }
         }
 
-        $draft = null;
-        if ($id && !$asNew) {
-            $draft = ComparingDraft::find($id);
+        // Strictly enforce ONLY 1 draft record in the entire database
+        $draft = ComparingDraft::latest('updated_at')->first();
+        if (!$draft) {
+            $draft = new ComparingDraft();
+            $draft->user_id = Auth::id();
+        } else {
+            $draft->user_id = Auth::id() ?: $draft->user_id;
         }
 
         $title = trim($request->input('title', ''));
         if (empty($title)) {
-            if ($draft && !empty($draft->title)) {
-                $title = $draft->title;
-            } else {
-                $title = ($company ? $company . ' - ' : '') . ($batchNo ?: ('Draft ' . now()->timezone('Asia/Manila')->format('h:i A')));
-            }
-        }
-
-        if (!$draft) {
-            $draft = new ComparingDraft();
-            $draft->user_id = Auth::id();
+            $title = ($company ? $company . ' - ' : '') . ($batchNo ?: 'Draft Sheet');
         }
 
         $draft->title = $title;
@@ -141,6 +138,9 @@ trait ComparingDraftsTrait
         $draft->total_rows = $totalRows;
         $draft->save();
 
+        // Remove any other legacy drafts
+        ComparingDraft::where('id', '!=', $draft->id)->delete();
+
         return response()->json([
             'success' => true,
             'draft_id' => $draft->id,
@@ -148,18 +148,18 @@ trait ComparingDraftsTrait
             'verified_count' => $draft->verified_count,
             'total_rows' => $draft->total_rows,
             'updated_at_formatted' => $draft->updated_at->timezone('Asia/Manila')->format('M d, Y h:i A'),
-            'message' => 'Draft successfully saved to database.',
+            'message' => 'Nai-save ang draft sa database.',
         ]);
     }
 
     /**
-     * Rename a draft in the database.
+     * Rename the single draft in the database.
      */
     public function renameDraft(Request $request, $id)
     {
-        $draft = ComparingDraft::find($id);
+        $draft = ComparingDraft::latest('updated_at')->first();
         if (!$draft) {
-            return response()->json(['success' => false, 'message' => 'Draft not found.'], 404);
+            return response()->json(['success' => false, 'message' => 'Walang draft na nahanap.'], 404);
         }
 
         $title = trim($request->input('title', ''));
@@ -178,18 +178,15 @@ trait ComparingDraftsTrait
     }
 
     /**
-     * Delete a draft from the database.
+     * Delete / clear the single draft from the database.
      */
     public function destroyDraft($id)
     {
-        $draft = ComparingDraft::find($id);
-        if ($draft) {
-            $draft->delete();
-        }
+        ComparingDraft::truncate();
 
         return response()->json([
             'success' => true,
-            'message' => 'Draft deleted from database.',
+            'message' => 'Nai-clear na ang saved draft.',
         ]);
     }
 }
