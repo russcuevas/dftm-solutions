@@ -137,6 +137,8 @@
             font-size: 0.88rem;
             font-weight: 700;
             color: #000000;
+            line-height: normal;
+            box-sizing: border-box;
             outline: none;
             border-radius: 4px;
             cursor: pointer;
@@ -146,6 +148,68 @@
             border-color: #2563EB;
             box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
         }
+
+        /* Bulk Applicator Bar Dropdown & Input Controls */
+        .bulk-applicator-select {
+            font-size: 0.82rem !important;
+            font-weight: 600 !important;
+            height: 34px !important;
+            line-height: normal !important;
+            padding: 4px 28px 4px 10px !important;
+            border: 1.5px solid #94A3B8 !important;
+            border-radius: 6px !important;
+            background-color: #FFFFFF !important;
+            color: #0F172A !important;
+            outline: none !important;
+            vertical-align: middle !important;
+            box-sizing: border-box !important;
+            cursor: pointer;
+            transition: border-color 0.15s ease, box-shadow 0.15s ease;
+        }
+
+        .bulk-applicator-select:focus {
+            border-color: #2563EB !important;
+            box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2) !important;
+        }
+
+        .bulk-applicator-input {
+            font-size: 0.82rem !important;
+            font-weight: 700 !important;
+            height: 34px !important;
+            line-height: normal !important;
+            padding: 4px 8px !important;
+            border: 1.5px solid #94A3B8 !important;
+            border-radius: 6px !important;
+            background-color: #FFFFFF !important;
+            color: #0F172A !important;
+            outline: none !important;
+            vertical-align: middle !important;
+            text-transform: uppercase;
+            text-align: center;
+            box-sizing: border-box !important;
+            transition: border-color 0.15s ease, box-shadow 0.15s ease;
+        }
+
+        .bulk-applicator-input:focus {
+            border-color: #0284C7 !important;
+            box-shadow: 0 0 0 2px rgba(2, 132, 199, 0.2) !important;
+        }
+
+        .bulk-applicator-btn {
+            font-size: 0.78rem !important;
+            font-weight: 700 !important;
+            height: 34px !important;
+            padding: 0 12px !important;
+            border-radius: 6px !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            white-space: nowrap !important;
+            cursor: pointer !important;
+            vertical-align: middle !important;
+            box-sizing: border-box !important;
+        }
+
 
         /* Table Row States */
         .excel-matrix-table tbody tr:hover td {
@@ -422,20 +486,20 @@
         </div>
 
         <!-- Quick Bulk Applicator for Technical Diagnostic, Replaced Parts & Box -->
-        <div style="background: #F8FAFC; border: 1.5px solid #CBD5E1; border-radius: 8px; padding: 8px 14px; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+        <div style="background: #F8FAFC; border: 1.5px solid #CBD5E1; border-radius: 8px; padding: 10px 14px; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
             <div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
                 <!-- Bulk Diagnostic -->
                 <div style="display: flex; align-items: center; gap: 6px;">
                     <span style="font-weight: 800; font-size: 0.8rem; color: #1E3A8A; white-space: nowrap;">
                         <i class="bi bi-wrench-adjustable"></i> BULK DIAGNOSTIC:
                     </span>
-                    <select id="quickBulkDiagnosticSelect" class="form-select form-select-sm" style="font-size: 0.82rem; font-weight: 600; width: 200px; height: 31px; border: 1px solid #94A3B8;">
+                    <select id="quickBulkDiagnosticSelect" class="form-select form-select-sm bulk-applicator-select" style="width: 220px;">
                         <option value="">-- Pumili ng Diagnostic --</option>
                         @foreach (\App\Models\InventoryItem::TECHNICAL_DIAGNOSTICS as $diag)
                             <option value="{{ $diag }}">{{ $diag }}</option>
                         @endforeach
                     </select>
-                    <button type="button" id="btnQuickApplyDiagnostic" class="btn btn-sm btn-primary" style="font-size: 0.78rem; font-weight: 700; height: 31px; padding: 2px 10px;">
+                    <button type="button" id="btnQuickApplyDiagnostic" class="btn btn-sm btn-primary bulk-applicator-btn">
                         Apply to All
                     </button>
                 </div>
@@ -445,13 +509,13 @@
                     <span style="font-weight: 800; font-size: 0.8rem; color: #1E3A8A; white-space: nowrap;">
                         <i class="bi bi-cpu"></i> BULK REPLACED PARTS:
                     </span>
-                    <select id="quickBulkPartsSelect" class="form-select form-select-sm" style="font-size: 0.82rem; font-weight: 600; width: 180px; height: 31px; border: 1px solid #94A3B8;">
+                    <select id="quickBulkPartsSelect" class="form-select form-select-sm bulk-applicator-select" style="width: 190px;">
                         <option value="">-- Pumili ng Part --</option>
                         @foreach (\App\Models\InventoryItem::REPLACED_PARTS as $part)
                             <option value="{{ $part }}">{{ $part }}</option>
                         @endforeach
                     </select>
-                    <button type="button" id="btnQuickApplyParts" class="btn btn-sm btn-primary" style="font-size: 0.78rem; font-weight: 700; height: 31px; padding: 2px 10px;">
+                    <button type="button" id="btnQuickApplyParts" class="btn btn-sm btn-primary bulk-applicator-btn">
                         Apply to All
                     </button>
                 </div>
@@ -461,8 +525,8 @@
                     <span style="font-weight: 800; font-size: 0.8rem; color: #0284C7; white-space: nowrap;">
                         <i class="bi bi-box-seam"></i> BULK BOX:
                     </span>
-                    <input type="text" id="quickBulkBoxInput" class="form-control form-control-sm" placeholder="e.g. B1" style="font-size: 0.82rem; font-weight: 700; width: 75px; height: 31px; text-transform: uppercase; text-align: center; border: 1px solid #94A3B8;">
-                    <button type="button" id="btnQuickApplyBox" class="btn btn-sm btn-info text-white" style="font-size: 0.78rem; font-weight: 700; height: 31px; padding: 2px 10px; background: #0284C7; border-color: #0284C7;">
+                    <input type="text" id="quickBulkBoxInput" class="form-control form-control-sm bulk-applicator-input" placeholder="e.g. B1" style="width: 80px;">
+                    <button type="button" id="btnQuickApplyBox" class="btn btn-sm btn-info text-white bulk-applicator-btn" style="background: #0284C7; border-color: #0284C7;">
                         Apply to All
                     </button>
                 </div>

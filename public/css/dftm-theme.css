@@ -782,6 +782,13 @@ body.sidebar-collapsed .app-main {
     outline: none;
 }
 
+.form-control-sm, .form-select-sm {
+    padding: 4px 10px;
+    font-size: 0.82rem;
+    border-radius: var(--radius-sm);
+    min-height: 32px;
+}
+
 .form-control:focus, .form-select:focus {
     border-color: var(--dftm-accent);
     box-shadow: 0 0 0 3px var(--dftm-accent-glow);
